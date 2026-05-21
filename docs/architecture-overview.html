@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IronClaw · 系统架构全景 + 成熟度审计</title>
+<style>
+  :root{
+    --bg:#0e1116; --bg2:#161b22; --bg3:#1c2330; --bg4:#222b3a;
+    --border:#2a3340; --border2:#3a4656;
+    --text:#d8e0ec; --dim:#8b97a8; --faint:#5e6b7d;
+    --amber:#f5a623; --amber-d:#c8841a;
+    --steel:#5b9dd9; --green:#4ec98c; --red:#e0556b; --purple:#b58bd6;
+    --mono:'SF Mono',ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;
+    line-height:1.7; font-size:15px;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--steel);text-decoration:none}
+  code{font-family:var(--mono);font-size:.86em;background:var(--bg3);
+    border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:#e4c98a;white-space:nowrap}
+  /* layout */
+  .wrap{display:flex;max-width:1480px;margin:0 auto}
+  nav{
+    width:256px;flex-shrink:0;position:sticky;top:0;height:100vh;
+    overflow-y:auto;padding:28px 16px 60px;border-right:1px solid var(--border);
+    background:linear-gradient(180deg,#11161d,#0e1116);
+  }
+  nav .brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  nav .brand .logo{width:30px;height:30px;border-radius:7px;
+    background:linear-gradient(135deg,var(--amber),#7a4f12);
+    display:grid;place-items:center;font-size:17px;flex-shrink:0}
+  nav .brand b{font-size:16px;letter-spacing:.3px}
+  nav .tag{font-size:11px;color:var(--faint);margin:0 0 22px 40px}
+  nav a.item{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:7px;
+    color:var(--dim);font-size:13px;border-left:2px solid transparent;transition:.15s}
+  nav a.item:hover{background:var(--bg2);color:var(--text)}
+  nav a.item.on{color:var(--amber);border-left-color:var(--amber);background:var(--bg2)}
+  nav a.item .nd{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-left:auto}
+  nav .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:1.4px;
+    color:var(--faint);margin:20px 0 6px 12px}
+  main{flex:1;min-width:0;padding:0 0 120px}
+  section{padding:62px 56px;border-bottom:1px solid var(--border)}
+  @media(max-width:1100px){
+    nav{display:none} section{padding:44px 24px}
+  }
+  /* hero */
+  .hero{background:
+    radial-gradient(900px 420px at 78% -8%,rgba(245,166,35,.16),transparent),
+    radial-gradient(700px 360px at 8% 6%,rgba(91,157,217,.12),transparent);
+    border-bottom:1px solid var(--border)}
+  .hero .kic{font-family:var(--mono);font-size:12px;color:var(--amber);
+    letter-spacing:2px;text-transform:uppercase}
+  h1{font-size:39px;line-height:1.18;margin:14px 0 16px;font-weight:740;letter-spacing:-.5px}
+  h1 .gr{background:linear-gradient(100deg,var(--amber),#e9b35d);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.lead{font-size:17px;color:var(--dim);max-width:780px}
+  h2{font-size:26px;font-weight:700;letter-spacing:-.3px;margin-bottom:6px;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  h2 .n{font-family:var(--mono);font-size:14px;color:var(--amber);
+    border:1px solid var(--amber-d);border-radius:7px;padding:3px 9px;flex-shrink:0}
+  h3{font-size:17px;margin:30px 0 12px;color:#fff;font-weight:650}
+  h3 .ic{color:var(--amber);margin-right:7px}
+  .sub{color:var(--dim);font-size:15px;margin-bottom:22px;max-width:880px}
+  p{margin:11px 0;max-width:920px}
+  p.note{color:var(--dim);font-size:13.5px}
+  ul{margin:11px 0 11px 4px;max-width:920px}
+  li{margin:6px 0 6px 20px}
+  strong{color:#fff;font-weight:620}
+  .em{color:var(--amber);font-weight:600}
+  /* maturity badge in h2 */
+  .mbadge{font-family:var(--mono);font-size:12px;font-weight:700;padding:3px 11px;
+    border-radius:20px;flex-shrink:0;border:1px solid}
+  .mbadge.ok{color:var(--green);border-color:#2f6b4d;background:rgba(78,201,140,.1)}
+  .mbadge.part{color:var(--amber);border-color:var(--amber-d);background:rgba(245,166,35,.1)}
+  .mbadge.stub{color:var(--red);border-color:#7a3340;background:rgba(224,85,107,.1)}
+  /* pills */
+  .pillrow{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
+  .pill{font-size:12px;font-family:var(--mono);padding:4px 11px;border-radius:20px;
+    background:var(--bg3);border:1px solid var(--border2);color:var(--dim)}
+  .pill.am{color:var(--amber);border-color:var(--amber-d)}
+  .pill.st{color:var(--steel);border-color:#3a5f80}
+  .pill.gr{color:var(--green);border-color:#2f6b4d}
+  .pill.pu{color:var(--purple);border-color:#5a4570}
+  /* cards */
+  .grid{display:grid;gap:14px;margin:20px 0}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:860px){.g2,.g3,.g4{grid-template-columns:1fr}}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:16px 17px}
+  .card.acc{border-top:2px solid var(--amber)}
+  .card.acc-s{border-top:2px solid var(--steel)}
+  .card.acc-g{border-top:2px solid var(--green)}
+  .card.acc-p{border-top:2px solid var(--purple)}
+  .card.acc-r{border-top:2px solid var(--red)}
+  .card h4{font-size:14.5px;margin-bottom:7px;color:#fff;display:flex;
+    align-items:center;gap:8px}
+  .card h4 .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .card p{font-size:13px;color:var(--dim);margin:5px 0}
+  .card .fp{font-family:var(--mono);font-size:11px;color:var(--faint);
+    margin-top:9px;display:block;word-break:break-all}
+  /* diagram primitives */
+  .diagram{background:var(--bg2);border:1px solid var(--border);border-radius:13px;
+    padding:26px 22px;margin:22px 0}
+  .diagram .dt{font-size:11px;font-family:var(--mono);color:var(--faint);
+    text-transform:uppercase;letter-spacing:1.6px;margin-bottom:18px}
+  .layer{display:flex;align-items:center;gap:14px;margin:9px 0}
+  .layer .lbl{width:124px;flex-shrink:0;font-family:var(--mono);font-size:11px;
+    color:var(--dim);text-align:right;line-height:1.35}
+  .band{flex:1;border-radius:9px;padding:13px 16px;border:1px solid var(--border2);
+    display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .band .bt{font-weight:650;font-size:13px;margin-right:8px;white-space:nowrap}
+  .box{font-family:var(--mono);font-size:11.5px;padding:5px 10px;border-radius:6px;
+    background:rgba(255,255,255,.04);border:1px solid var(--border2);color:var(--text)}
+  .b-am{background:rgba(245,166,35,.10);border-color:var(--amber-d)}
+  .b-st{background:rgba(91,157,217,.10);border-color:#3a5f80}
+  .b-gr{background:rgba(78,201,140,.10);border-color:#2f6b4d}
+  .b-pu{background:rgba(181,139,214,.11);border-color:#5a4570}
+  .b-rd{background:rgba(224,85,107,.10);border-color:#7a3340}
+  .lay-am{background:rgba(245,166,35,.055)}
+  .lay-st{background:rgba(91,157,217,.05)}
+  .lay-gr{background:rgba(78,201,140,.05)}
+  .lay-pu{background:rgba(181,139,214,.055)}
+  .lay-rd{background:rgba(224,85,107,.05)}
+  .lay-n{background:var(--bg3)}
+  /* vertical flow */
+  .flow{display:flex;flex-direction:column;align-items:stretch;gap:0;margin:20px 0}
+  .step{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;
+    padding:13px 18px;display:flex;gap:14px;align-items:flex-start}
+  .step .si{width:26px;height:26px;border-radius:7px;flex-shrink:0;display:grid;
+    place-items:center;font-family:var(--mono);font-size:12px;font-weight:700;
+    background:var(--amber);color:#1a1206}
+  .step .sc b{color:#fff;font-size:13.5px}
+  .step .sc p{font-size:12.5px;color:var(--dim);margin:3px 0 0}
+  .step .sc .fp{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .conn{width:2px;height:16px;background:var(--border2);margin:0 auto;flex-shrink:0}
+  .conn.a::after{content:"▼";color:var(--border2);font-size:9px;
+    position:relative;top:9px;left:-3px}
+  /* horizontal flow */
+  .hflow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:18px 0}
+  .hbox{flex:1;min-width:118px;background:var(--bg3);border:1px solid var(--border2);
+    border-radius:9px;padding:11px 12px;text-align:center}
+  .hbox b{font-size:12.5px;color:#fff;display:block}
+  .hbox span{font-size:10.5px;color:var(--dim);font-family:var(--mono)}
+  .harr{display:grid;place-items:center;padding:0 6px;color:var(--amber);
+    font-size:15px;flex-shrink:0}
+  /* table */
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:13px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border)}
+  th{color:var(--amber);font-size:11px;text-transform:uppercase;letter-spacing:1px;
+    font-weight:600;background:var(--bg2)}
+  td{color:var(--dim);vertical-align:top}
+  td b,td strong{color:var(--text)}
+  td code{white-space:normal}
+  tr:hover td{background:rgba(255,255,255,.015)}
+  tr.grouprow td{background:var(--bg3);color:var(--amber);font-weight:700;
+    font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase}
+  .v{font-family:var(--mono);font-weight:700;font-size:13px;white-space:nowrap}
+  .v.ok{color:var(--green)} .v.part{color:var(--amber)} .v.stub{color:var(--red)}
+  /* maturity bar */
+  .bar{height:6px;border-radius:4px;background:var(--bg4);overflow:hidden;
+    margin:4px 0;min-width:74px}
+  .bar > i{display:block;height:100%;border-radius:4px}
+  .bar i.ok{background:linear-gradient(90deg,#3a8f63,var(--green))}
+  .bar i.part{background:linear-gradient(90deg,#b07d1c,var(--amber))}
+  .bar i.stub{background:linear-gradient(90deg,#8a3343,var(--red))}
+  .pct{font-family:var(--mono);font-size:12px;font-weight:700}
+  .pct.ok{color:var(--green)} .pct.part{color:var(--amber)} .pct.stub{color:var(--red)}
+  /* callout */
+  .callout{border-left:3px solid var(--steel);background:var(--bg2);
+    border-radius:0 9px 9px 0;padding:13px 18px;margin:18px 0;font-size:13.5px}
+  .callout.warn{border-left-color:var(--amber)}
+  .callout.sec{border-left-color:var(--green)}
+  .callout.crit{border-left-color:var(--red)}
+  .callout .ct{font-weight:680;color:#fff;display:block;margin-bottom:3px}
+  .callout p{margin:4px 0;color:var(--dim);font-size:13px}
+  /* split compare */
+  .vs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0}
+  @media(max-width:860px){.vs{grid-template-columns:1fr}}
+  .vs .col{border:1px solid var(--border);border-radius:11px;padding:18px;background:var(--bg2)}
+  .vs .col.v1{border-top:3px solid var(--steel)}
+  .vs .col.v2{border-top:3px solid var(--purple)}
+  .vs .col h4{font-size:15px;color:#fff;margin-bottom:4px}
+  .vs .col .vt{font-size:11px;font-family:var(--mono);color:var(--faint);margin-bottom:12px}
+  .vs .col li{font-size:12.5px;color:var(--dim);margin:6px 0 6px 18px}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin:16px 0;font-size:12px;color:var(--dim)}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block;
+    margin-right:6px;vertical-align:-1px}
+  /* big stat */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0}
+  @media(max-width:860px){.stats{grid-template-columns:1fr 1fr}}
+  .stat{background:var(--bg2);border:1px solid var(--border);border-radius:11px;
+    padding:18px;text-align:center}
+  .stat .big{font-size:34px;font-weight:760;font-family:var(--mono);line-height:1}
+  .stat .lb{font-size:12px;color:var(--dim);margin-top:7px}
+  .foot{padding:34px 56px;color:var(--faint);font-size:12px}
+  .foot code{font-size:11px}
+  @media(max-width:1100px){.foot{padding:30px 24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <div class="brand"><div class="logo">⚙</div><b>IronClaw</b></div>
+  <div class="tag">架构全景 + 成熟度审计</div>
+  <div class="grp">总览</div>
+  <a class="item" href="#overview">1 · 它是什么</a>
+  <a class="item" href="#layers">2 · 分层架构全景</a>
+  <a class="item" href="#lifecycle">3 · 一条消息的生命周期</a>
+  <div class="grp">运行时</div>
+  <a class="item" href="#channels">4 · Channels / I-O<span class="nd" style="background:var(--green)"></span></a>
+  <a class="item" href="#agent-core">5 · Agent 核心 v1<span class="nd" style="background:var(--green)"></span></a>
+  <a class="item" href="#engine-v2">6 · Engine v2 / CodeAct<span class="nd" style="background:var(--green)"></span></a>
+  <a class="item" href="#tools">7 · 工具系统<span class="nd" style="background:var(--green)"></span></a>
+  <div class="grp">能力扩展</div>
+  <a class="item" href="#skills">8 · Skills 架构<span class="nd" style="background:var(--green)"></span></a>
+  <a class="item" href="#multiagent">9 · 多智能体 · lead-sub<span class="nd" style="background:var(--amber)"></span></a>
+  <div class="grp">基础设施</div>
+  <a class="item" href="#security">10 · 安全与沙箱<span class="nd" style="background:var(--green)"></span></a>
+  <a class="item" href="#crates">11 · 30 个 Crate 地图</a>
+  <a class="item" href="#memory">12 · 持久化与记忆<span class="nd" style="background:var(--green)"></span></a>
+  <a class="item" href="#learning">13 · 自我进化闭环<span class="nd" style="background:var(--amber)"></span></a>
+  <div class="grp">评估</div>
+  <a class="item" href="#audit">14 · 成熟度总审计</a>
+  <a class="item" href="#vs-cc">15 · 对比 Claude Code</a>
+</nav>
+<main>
+
+<!-- ============ HERO ============ -->
+<section class="hero" id="overview">
+  <div class="kic">Secure Personal AI Assistant · Rust · 含逐项成熟度审计</div>
+  <h1>IronClaw — 一个<span class="gr">常驻、自我扩展、纵深防御</span>的<br>个人 AI 智能体</h1>
+  <p class="lead">
+    如果说 <strong>Claude Code</strong> 是「终端里的编码智能体」，那么 <strong>IronClaw</strong>
+    是把同一套「LLM 推理 → 工具调用 → 观察 → 再推理」的智能体内核，<em class="em">长成一个 7×24
+    在线、多渠道接入、能自己造工具、把不可信代码关进沙箱</em>的私人助理服务。本页基于真实代码梳理，
+    并对每个子系统给出 <em class="em">✓/⚠/✗ 三档</em>评级。
+  </p>
+  <div class="pillrow">
+    <span class="pill am">Rust 2024 · v0.28</span>
+    <span class="pill">30 个 workspace crate</span>
+    <span class="pill st">tokio 全异步</span>
+    <span class="pill gr">WASM 沙箱 (wasmtime)</span>
+    <span class="pill">PostgreSQL + libSQL 双后端</span>
+    <span class="pill pu">Engine v2 / CodeAct</span>
+    <span class="pill">MCP 协议</span>
+  </div>
+
+  <h3><span class="ic">◆</span>核心信条（来自 README 与 CLAUDE.md）</h3>
+  <div class="grid g4">
+    <div class="card acc"><h4>用户优先</h4><p>数据全部本地存储、加密、绝不外泄；无遥测。「你的 AI 应当为你工作」。</p></div>
+    <div class="card acc-g"><h4>纵深防御</h4><p>不可信工具进 WASM 沙箱；凭证零暴露；提示注入多层拦截。</p></div>
+    <div class="card acc-s"><h4>自我扩展</h4><p>描述需求 → 智能体现场编译出新的 WASM 工具；可接 MCP 生态。</p></div>
+    <div class="card acc-p"><h4>主动执行</h4><p>Heartbeat 心跳 + Routines 定时/事件触发，后台自主干活，而非纯被动应答。</p></div>
+  </div>
+
+  <h3><span class="ic">◆</span>如何阅读本文档的「完善度」标记</h3>
+  <div class="grid g3">
+    <div class="card acc-g"><h4><span class="dot" style="background:var(--green)"></span>✓ 生产级 · 实现完整</h4>
+      <p>关键类型/函数已逐项定位、无桩标记、被运行时实际调用。可放心依赖。</p></div>
+    <div class="card acc"><h4><span class="dot" style="background:var(--amber)"></span>⚠ 部分 / 实验</h4>
+      <p>主干可用但有明确、具名的缺口（如 opt-in 默认关闭、缺渐进式 streaming、效果待经验验证）。</p></div>
+    <div class="card acc-r"><h4><span class="dot" style="background:var(--red)"></span>✗ 桩 / 缺失</h4>
+      <p>占位代码、仅有设计、或文件不存在。</p></div>
+  </div>
+  <p class="note">⚠ <strong>评级是「代码实现的完成度」，不等于「已在大规模生产环境验证」。</strong>
+  每节标题右侧的 ✓/⚠ 徽章只作粗略指示；<a href="#audit">第 14 节</a>是逐项实证总表，每条都附原始 grep / GitHub issue 证据——<strong>精确判断以第 14 节为准</strong>。</p>
+
+  <div class="callout warn">
+    <span class="ct">⚠ 阅读本图前必须理解的一件事：代码库正处于「三态并存」的迁移期</span>
+    <p>仓库里同时存在三套结构，本文档会分别标注它们：</p>
+    <p><strong>① Legacy v1</strong>（<code>src/agent/</code>）— 最初的单体 Agent 事件循环，目前默认运行。</p>
+    <p><strong>② Reborn 分层 crate</strong>（<code>crates/ironclaw_*</code>，30 个）— 把宿主能力按「权威 → 基础设施 → 调度 → 运行时」重新解耦的新地基。</p>
+    <p><strong>③ Engine v2</strong>（<code>crates/ironclaw_engine/</code>）— 用 5 个原语 + Python 编排器（CodeAct）重写的统一执行引擎，靠 <code>ENGINE_V2=true</code> 开启（<em class="em">opt-in，非默认</em>）。</p>
+    <p><code>src/bridge/</code> 是把 v1 渠道层接到 v2 引擎的适配桥。理解架构 = 理解这三者各管什么、如何拼接。</p>
+  </div>
+</section>
+
+<!-- ============ 2 · LAYERS ============ -->
+<section id="layers">
+  <h2><span class="n">02</span>分层架构全景</h2>
+  <p class="sub">两种正交视角。「运行时组合视图」回答<em class="em">一个请求从外部世界走到 LLM 经过哪些环节</em>；
+  「Crate 依赖分层视图」回答<em class="em">30 个 crate 谁依赖谁、权威与执行如何分离</em>。</p>
+
+  <h3><span class="ic">▸</span>视图 A · 运行时组合（请求路径，对应 README 架构图）</h3>
+  <div class="diagram">
+    <div class="dt">Runtime Composition — outside-in</div>
+    <div class="layer">
+      <div class="lbl">入口 / I-O<br>src/channels</div>
+      <div class="band lay-st">
+        <span class="bt" style="color:var(--steel)">Channels</span>
+        <span class="box b-st">REPL / TUI</span>
+        <span class="box b-st">HTTP Webhook</span>
+        <span class="box b-st">WASM Channels<br>(Telegram·Slack·Discord·WeChat·Feishu)</span>
+        <span class="box b-st">Web Gateway (SSE + WS)</span>
+      </div>
+    </div>
+    <div class="conn a"></div>
+    <div class="layer">
+      <div class="lbl">汇聚 / 解析<br>src/channels<br>src/bridge</div>
+      <div class="band lay-n">
+        <span class="bt">Manager + Bridge</span>
+        <span class="box">ChannelManager · select_all 流合并</span>
+        <span class="box">SubmissionParser</span>
+        <span class="box b-am">AuthManager 身份解析</span>
+      </div>
+    </div>
+    <div class="conn a"></div>
+    <div class="layer">
+      <div class="lbl">智能体核心<br>src/agent<br>ironclaw_engine</div>
+      <div class="band lay-am">
+        <span class="bt" style="color:var(--amber)">Agent Loop</span>
+        <span class="box b-am">v1: Router → Dispatcher → run_agentic_loop()</span>
+        <span class="box b-pu">v2: ThreadManager → ExecutionLoop (CodeAct)</span>
+      </div>
+    </div>
+    <div class="conn a"></div>
+    <div class="layer">
+      <div class="lbl">调度 / 后台</div>
+      <div class="band lay-n">
+        <span class="bt">编排</span>
+        <span class="box">Scheduler 并行 Job</span>
+        <span class="box">Routines 引擎 (cron·event·webhook)</span>
+        <span class="box">Heartbeat 主动心跳</span>
+        <span class="box">Orchestrator + Worker (Docker 沙箱)</span>
+      </div>
+    </div>
+    <div class="conn a"></div>
+    <div class="layer">
+      <div class="lbl">能力执行<br>src/tools</div>
+      <div class="band lay-gr">
+        <span class="bt" style="color:var(--green)">Tool Registry · Dispatcher</span>
+        <span class="box b-gr">Builtin (~28 个原生 Rust 工具)</span>
+        <span class="box b-gr">WASM 沙箱工具</span>
+        <span class="box b-gr">MCP Server</span>
+      </div>
+    </div>
+    <div class="conn a"></div>
+    <div class="layer">
+      <div class="lbl">持久化<br>src/db · workspace</div>
+      <div class="band lay-n">
+        <span class="bt">状态</span>
+        <span class="box">PostgreSQL (pgvector)</span>
+        <span class="box">libSQL / Turso</span>
+        <span class="box">Workspace 记忆 (FTS + 向量 RRF)</span>
+        <span class="box b-rd">Secrets (AES-256-GCM + 系统钥匙串)</span>
+      </div>
+    </div>
+  </div>
+
+  <h3><span class="ic">▸</span>视图 B · Reborn Crate 依赖分层（权威下沉，执行上浮）</h3>
+  <p class="note">设计原则：底层只定义<strong>权威词汇与策略</strong>（谁可以做什么），上层只负责<strong>把已授权的调用路由到执行车道</strong>。
+  没有任何「执行 crate」可以绕过下层的授权 / 信任 / 审批。</p>
+  <div class="diagram">
+    <div class="dt">Crate Dependency Layers — bottom = authority, top = surface</div>
+    <div class="layer"><div class="lbl">L7 · 用户表面</div>
+      <div class="band lay-n"><span class="box">ironclaw_gateway 前端资源</span>
+      <span class="box">ironclaw_tui</span><span class="box">ironclaw_oauth 回调监听</span></div></div>
+    <div class="layer"><div class="lbl">L6 · 引擎 / 宿主</div>
+      <div class="band lay-pu"><span class="box b-pu">ironclaw_engine（5 原语 · CodeAct）</span>
+      <span class="box b-pu">ironclaw_host_runtime（HostRuntime 门面）</span></div></div>
+    <div class="layer"><div class="lbl">L5 · 运行时车道</div>
+      <div class="band lay-gr"><span class="box b-gr">ironclaw_wasm</span>
+      <span class="box b-gr">ironclaw_mcp</span><span class="box b-gr">ironclaw_scripts</span>
+      <span class="box b-gr">ironclaw_llm</span><span class="box b-gr">ironclaw_embeddings</span></div></div>
+    <div class="layer"><div class="lbl">L4 · 能力 / 进程</div>
+      <div class="band lay-n"><span class="box">ironclaw_capabilities（CapabilityHost）</span>
+      <span class="box">ironclaw_processes</span><span class="box">ironclaw_memory</span>
+      <span class="box">ironclaw_dispatcher 车道路由</span></div></div>
+    <div class="layer"><div class="lbl">L3 · 授权 / 审批</div>
+      <div class="band lay-am"><span class="box b-am">ironclaw_authorization 租约授权</span>
+      <span class="box b-am">ironclaw_approvals</span><span class="box b-am">ironclaw_run_state</span>
+      <span class="box b-am">ironclaw_extensions</span></div></div>
+    <div class="layer"><div class="lbl">L2 · 基础设施</div>
+      <div class="band lay-n"><span class="box">ironclaw_filesystem</span><span class="box">ironclaw_network</span>
+      <span class="box b-rd">ironclaw_secrets</span><span class="box">ironclaw_resources</span>
+      <span class="box">ironclaw_events</span><span class="box b-rd">ironclaw_safety</span></div></div>
+    <div class="layer"><div class="lbl">L1 · 权威词汇</div>
+      <div class="band lay-rd"><span class="box b-rd">ironclaw_host_api（IDs · Scopes · Decisions · 零依赖）</span>
+      <span class="box b-rd">ironclaw_common</span><span class="box b-rd">ironclaw_trust 信任策略引擎</span></div></div>
+    <div class="legend">
+      <span><i style="background:var(--red)"></i>权威 / 安全词汇</span>
+      <span><i style="background:var(--amber)"></i>授权与扩展</span>
+      <span><i style="background:var(--green)"></i>执行车道</span>
+      <span><i style="background:var(--purple)"></i>引擎</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3 · LIFECYCLE ============ -->
+<section id="lifecycle">
+  <h2><span class="n">03</span>一条消息的完整生命周期</h2>
+  <p class="sub">以「用户在 Telegram 发一句话」为例，追踪它如何穿过整个系统并返回。这是理解全局的最快路径。</p>
+  <div class="flow">
+    <div class="step"><div class="si">1</div><div class="sc">
+      <b>外部事件抵达</b><p>Telegram Webhook POST → 统一 HTTP 服务器验签（HMAC / Ed25519）→ 分发给 <code>telegram.wasm</code> 的 <code>on_http_req()</code> 回调。</p>
+      <span class="fp">src/channels/webhook_server.rs · src/channels/wasm/router.rs</span></div></div>
+    <div class="conn a"></div>
+    <div class="step"><div class="si">2</div><div class="sc">
+      <b>WASM 渠道解析并 emit</b><p>WASM 模块解析 JSON，调用宿主导入 <code>emit_message(sender_id, content)</code>。宿主做配对校验（陌生人需 pairing 批准）+ 限流，构造 <code>IncomingMessage</code>。</p>
+      <span class="fp">src/channels/wasm/host.rs · src/pairing/</span></div></div>
+    <div class="conn a"></div>
+    <div class="step"><div class="si">3</div><div class="sc">
+      <b>ChannelManager 流合并</b><p>所有渠道的 <code>MessageStream</code> + 内部注入通道经 <code>futures::select_all</code> 合并为单一流，被 <code>Agent::run()</code> 轮询。</p>
+      <span class="fp">src/channels/manager.rs</span></div></div>
+    <div class="conn a"></div>
+    <div class="step"><div class="si">4</div><div class="sc">
+      <b>解析与路由</b><p><code>SubmissionParser</code> 区分 /命令、审批应答、自然语言；<code>AuthManager</code> 解析 <code>extension_name</code> vs <code>credential_name</code>。然后分叉：v1 走 <code>SessionManager</code>，v2 走 <code>bridge::router</code>。</p>
+      <span class="fp">src/agent/submission.rs · src/bridge/router.rs</span></div></div>
+    <div class="conn a"></div>
+    <div class="step"><div class="si">5</div><div class="sc">
+      <b>智能体循环（ReAct）</b><p>进入 <code>run_agentic_loop()</code>（v1）或 <code>ExecutionLoop::run()</code>（v2）：检查信号 → 装配上下文 → 调用 LLM → 若返回文本则结束，若返回工具调用则执行 → 回灌结果 → 重复（上限约 50 轮）。</p>
+      <span class="fp">src/agent/agentic_loop.rs · crates/ironclaw_engine/src/executor/loop_engine.rs</span></div></div>
+    <div class="conn a"></div>
+    <div class="step"><div class="si">6</div><div class="sc">
+      <b>工具执行 + 安全管线</b><p>每个工具调用经 <code>SafetyLayer</code>（注入检测 → schema 校验 → 参数脱敏）→ 经 <code>ToolRegistry</code> 派发到 Builtin / WASM / MCP；高危工具触发审批门。结果包进 <code>&lt;tool_output&gt;</code> 再回灌。</p>
+      <span class="fp">src/tools/dispatch.rs · crates/ironclaw_safety/</span></div></div>
+    <div class="conn a"></div>
+    <div class="step"><div class="si">7</div><div class="sc">
+      <b>响应回流</b><p>最终文本经 <code>LeakDetector</code> 出站扫描 → <code>ChannelManager::respond()</code> 按 <code>msg.channel</code> 路由回 Telegram WASM 的 <code>on_respond()</code> → 调 Telegram API；Web 端则把过程事件投影成 <code>AppEvent</code> 经 SSE/WS 实时推送。</p>
+      <span class="fp">src/channels/manager.rs · src/channels/web/platform/sse.rs</span></div></div>
+  </div>
+  <div class="callout">
+    <span class="ct">关键不变量 · 多租户隔离</span>
+    <p>SSE/WS 订阅按 bearer token 推导的 <code>user_id</code> 作用域；消息 <code>metadata.user_id</code> 始终被真实 <code>user_id</code> 覆盖，调用方无法伪造跨租户访问。</p>
+  </div>
+</section>
+
+<!-- ============ 4 · CHANNELS ============ -->
+<section id="channels">
+  <h2><span class="n">04</span>Channels / I-O 表面<span class="mbadge ok">✓</span></h2>
+  <p class="sub">这是 IronClaw 区别于 Claude Code 最大的地方：不是单一终端，而是一个可插拔的多渠道接入层。
+  所有渠道实现同一个 <code>Channel</code> trait，于是「换渠道」对智能体核心完全透明。</p>
+
+  <h3><span class="ic">▸</span>Channel trait — 统一抽象</h3>
+  <div class="grid g2">
+    <div class="card acc-s"><h4><span class="dot" style="background:var(--steel)"></span>核心方法</h4>
+      <p><code>start() → MessageStream</code> 启动并产出消息流</p>
+      <p><code>respond(msg, resp)</code> 同步回复原始消息</p>
+      <p><code>broadcast(user_id, resp)</code> 主动推送（无需关联）</p>
+      <p><code>send_status(status, meta)</code> 实时状态指示</p>
+      <span class="fp">src/channels/channel.rs</span></div>
+    <div class="card acc-s"><h4><span class="dot" style="background:var(--steel)"></span>ChannelManager</h4>
+      <p>用 <code>select_all</code> 把所有渠道流合并成一条；<code>hot_add()</code> 支持运行时热替换渠道。</p>
+      <p><strong>注入通道</strong>：后台任务（Job 监控、调度器）可经 mpsc 把 <code>IncomingMessage</code> 注入主流，无需实现完整 Channel。</p>
+      <span class="fp">src/channels/manager.rs</span></div>
+  </div>
+
+  <h3><span class="ic">▸</span>四类渠道实现 — 各自成熟度</h3>
+  <div class="grid g4">
+    <div class="card acc-g"><h4>REPL / TUI <span class="mbadge ok" style="margin-left:auto">✓</span></h4><p>终端交互。TUI 用 Ratatui 构建（<code>ironclaw_tui</code> crate），多会话面板。</p></div>
+    <div class="card acc-g"><h4>HTTP Webhook <span class="mbadge ok" style="margin-left:auto">✓</span></h4><p><code>HttpChannel</code>，HMAC-SHA256 验签，60 req/min 限流，可选同步响应关联。</p></div>
+    <div class="card acc"><h4>WASM Channels <span class="mbadge part" style="margin-left:auto">⚠</span></h4><p>5 个渠道是预编译 WASM；激活路径（boot + hot-activation）<strong>已实现</strong>，但有一组未关闭的精修 bug：hook 生命周期绑定 (#2558)、scope 模型 (#2564)、多租户出站 (#2263)。</p></div>
+    <div class="card acc-g"><h4>Web Gateway <span class="mbadge ok" style="margin-left:auto">✓</span></h4><p>浏览器 SPA，SSE + WS 双流，11 个 feature 切片，约 9.5k LOC。</p></div>
+  </div>
+
+  <h3><span class="ic">▸</span>WASM Channel 模型 — 宿主托管事件循环（NEAR 模式）</h3>
+  <p>渠道不是常驻进程，而是<strong>每次回调创建全新实例</strong>，无共享可变状态。宿主（Rust）负责 HTTP 路由、轮询循环、定时器；WASM 只定义行为回调。</p>
+  <div class="diagram">
+    <div class="dt">WASM Channel — host ⇄ guest 边界</div>
+    <div class="hflow">
+      <div class="hbox b-st"><b>宿主托管</b><span>HTTP router · poll loop · timer</span></div>
+      <div class="harr">⇄</div>
+      <div class="hbox"><b>WASM 导出回调</b><span>on_http_req · on_poll · on_respond</span></div>
+      <div class="harr">⇄</div>
+      <div class="hbox b-am"><b>宿主导入</b><span>emit_message · http_request · get_config · log</span></div>
+    </div>
+  </div>
+  <p class="note">凭证<strong>从不进入 WASM</strong>：WASM 调 <code>http_request</code> 时，宿主在边界处注入解密后的认证头；<code>get_config(key)</code> 读到的是宿主从加密 secrets store 解出的值。</p>
+
+  <h3><span class="ic">▸</span>Web Gateway · Tunnel · Pairing</h3>
+  <div class="grid g3">
+    <div class="card acc"><h4>Auth Gate（v2 路径）</h4><p>工具需 OAuth 凭证时，引擎抛出 Authentication 门 → <code>gate_controller</code> 暂停 VM → SSE 广播 <code>GateRequired</code> → 用户点「连接」→ <code>/api/chat/gate/resolve</code> → 引擎恢复重试。</p></div>
+    <div class="card acc"><h4>Tunnel 抽象 <span class="mbadge ok" style="margin-left:auto">✓</span></h4><p><code>Tunnel</code> trait：cloudflare / tailscale / ngrok / custom / none 五个 provider 全实现。把本地 8080 暴露成公网 URL。</p></div>
+    <div class="card acc"><h4>Pairing 配对</h4><p>陌生人首次 DM → 返回配对码 → 用户在 Web UI 批准 → <code>PairingStore</code> 记录 <code>(channel, external_id, owner)</code>。DM 默认门禁。</p></div>
+  </div>
+</section>
+
+<!-- ============ 5 · AGENT CORE V1 ============ -->
+<section id="agent-core">
+  <h2><span class="n">05</span>Agent 执行核心 · Legacy v1<span class="mbadge ok">✓</span></h2>
+  <p class="sub">这是<strong>当前默认运行</strong>的引擎。核心洞察：三个专用 delegate（聊天 / 后台 Job / 容器）<em class="em">共享同一个
+  <code>run_agentic_loop()</code> 循环引擎</em>，靠 <code>LoopDelegate</code> trait 解耦。</p>
+
+  <h3><span class="ic">▸</span>会话数据模型 — 三层嵌套</h3>
+  <div class="hflow">
+    <div class="hbox b-am"><b>Session</b><span>每用户 · 持有多 Thread</span></div>
+    <div class="harr">→</div>
+    <div class="hbox b-am"><b>Thread</b><span>每会话 · 持有多 Turn</span></div>
+    <div class="harr">→</div>
+    <div class="hbox b-am"><b>Turn</b><span>每问答对 · 含状态机</span></div>
+  </div>
+
+  <h3><span class="ic">▸</span>共享智能体循环（所有 delegate 复用）</h3>
+  <div class="diagram">
+    <div class="dt">run_agentic_loop() — 1..50 轮</div>
+    <div class="flow">
+      <div class="step"><div class="si">①</div><div class="sc"><b>check_signals()</b><p>检查 Stop / InjectMessage 信号</p></div></div>
+      <div class="conn a"></div>
+      <div class="step"><div class="si">②</div><div class="sc"><b>before_llm_call()</b><p>刷新工具列表、强制预算上限</p></div></div>
+      <div class="conn a"></div>
+      <div class="step"><div class="si">③</div><div class="sc"><b>call_llm()</b><p>经 <code>LlmProvider::complete()</code> 调模型</p></div></div>
+      <div class="conn a"></div>
+      <div class="step"><div class="si">④</div><div class="sc"><b>分支判断</b><p>返回文本 → <code>LoopOutcome::Response</code> 结束；返回工具调用 → <code>execute_tool_calls()</code> 后继续循环</p></div></div>
+    </div>
+    <p class="note" style="margin-top:8px">终止条件：文本响应 · 达到最大轮次 · 需要审批 · 出错。结果为 <code>LoopOutcome</code> 枚举：<code>Response / Stopped / MaxIterations / Failure / NeedApproval / AuthPending</code>。</p>
+  </div>
+
+  <h3><span class="ic">▸</span>三个 Delegate · 三种执行场景</h3>
+  <div class="grid g3">
+    <div class="card acc-s"><h4>ChatDelegate</h4><p>对话式回合。处理审批门、用户消息注入。</p><span class="fp">src/agent/dispatcher.rs</span></div>
+    <div class="card acc-s"><h4>JobDelegate</h4><p>后台 Job。预批准工具绕过审批门，自主执行。</p><span class="fp">src/worker/job.rs</span></div>
+    <div class="card acc-s"><h4>ContainerDelegate</h4><p>Docker 容器内执行，事件经 HTTP 流回 Orchestrator。</p><span class="fp">src/worker/container.rs</span></div>
+  </div>
+
+  <h3><span class="ic">▸</span>调度、容器与 Claude Code 桥</h3>
+  <div class="grid g2">
+    <div class="card acc"><h4>Scheduler + Orchestrator</h4>
+      <p><code>Scheduler</code> 管两张并发表：完整 LLM 驱动的 <code>jobs</code> 与轻量 <code>subtasks</code>。</p>
+      <p><code>SANDBOX_ENABLED</code> 时 Job 进 Docker 容器；<code>Orchestrator</code> 提供容器内部 HTTP API（LLM 代理、事件、每 Job bearer token）。</p>
+      <span class="fp">src/agent/scheduler.rs · src/orchestrator/</span></div>
+    <div class="card acc"><h4>Claude Bridge — 字面意义的「调用 Claude Code」</h4>
+      <p><code>claude_bridge.rs</code> 在 Docker 容器内<strong>直接 spawn <code>claude</code> CLI</strong>：<code>claude -p "task" --output-format stream-json</code>，消费 NDJSON 事件流。</p>
+      <p>容器是主安全边界；spawn 前写入 <code>.claude/settings.json</code> 工具白名单；凭证不进容器。</p>
+      <span class="fp">src/worker/claude_bridge.rs</span></div>
+  </div>
+
+  <h3><span class="ic">▸</span>主动性 · 上下文管理</h3>
+  <div class="grid g2">
+    <div class="card acc-p"><h4>Heartbeat 心跳 <span class="mbadge ok" style="margin-left:auto">✓</span></h4>
+      <p>默认每 30 分钟（或固定时刻）：读 workspace 里的 <code>HEARTBEAT.md</code> 清单 → 跑一轮智能体 → 有发现才经渠道通知，否则静默回 <code>HEARTBEAT_OK</code>。支持静默时段、多租户轮询。已知缺口：进程重启后区间计时不恢复。</p>
+      <span class="fp">src/agent/heartbeat.rs</span></div>
+    <div class="card acc-p"><h4>Compaction 压缩</h4>
+      <p>Token 用量逼近上限（默认 100k 的 80%）时三策略：80–85% 转存 workspace、85–95% LLM 摘要、&gt;95% 直接截断旧 Turn。<strong>LLM 数据永不删除</strong>，只归档。</p>
+      <span class="fp">src/agent/compaction.rs</span></div>
+  </div>
+</section>
+
+<!-- ============ 6 · ENGINE V2 ============ -->
+<section id="engine-v2">
+  <h2><span class="n">06</span>Engine v2 与 CodeAct 范式<span class="mbadge ok">✓</span></h2>
+  <p class="sub">v2 是对 v1 的彻底重构：用 <em class="em">5 个原语</em>替代约 10 个旧抽象，并把循环编排逻辑从 Rust
+  下放到一个<strong>可自我修改的 Python 编排器</strong>。靠 <code>ENGINE_V2=true</code> 开启 —— 代码完整、约 38.6k LOC、527 测试，但目前 opt-in、非默认。</p>
+
+  <h3><span class="ic">▸</span>5 个原语 — 一张表看懂重构</h3>
+  <table>
+    <tr><th>原语</th><th>含义</th><th>取代了 v1 的</th><th>评级</th></tr>
+    <tr><td><b>Thread</b></td><td>工作单元：生命周期、父子树、能力租约</td><td>Session + Job + Routine + Sub-agent</td><td><span class="v ok">✓</span></td></tr>
+    <tr><td><b>Step</b></td><td>执行单元：一次 LLM 调用 + 其动作执行</td><td>智能体循环的一轮迭代 + 工具调用</td><td><span class="v ok">✓</span></td></tr>
+    <tr><td><b>Capability</b></td><td>效应单元：动作 + 知识 + 策略</td><td>Tool + Skill + Hook + Extension</td><td><span class="v ok">✓</span></td></tr>
+    <tr><td><b>MemoryDoc</b></td><td>知识单元：摘要 / 教训 / 技能 / 缺陷 / 规格</td><td>workspace 的零散记忆 blob</td><td><span class="v ok">✓</span></td></tr>
+    <tr><td><b>Project</b></td><td>上下文单元：圈定记忆、线程、任务的作用域</td><td>扁平的 workspace 命名空间</td><td><span class="v ok">✓</span></td></tr>
+  </table>
+
+  <h3><span class="ic">▸</span>双层执行模型 — 稳定内核 + 可变编排器</h3>
+  <div class="vs">
+    <div class="col v1"><h4>Rust 层 · 稳定内核</h4>
+      <div class="vt">很少变动 · 安全边界</div>
+      <ul>
+        <li><code>LlmBackend</code> — LLM API 调用</li>
+        <li><code>EffectExecutor</code> — 带安全/策略的工具执行</li>
+        <li><code>Store</code> — 持久化 Thread/Step/Event/Doc</li>
+        <li><code>LeaseManager</code> — 能力租约 发放/校验/消费/撤销</li>
+        <li><code>PolicyEngine</code> — 确定性 allow/deny/require-approval</li>
+        <li><code>ThreadManager</code> — spawn / stop / inject / join</li>
+        <li><b>Monty VM</b> — 经 <code>monty</code> crate 内嵌的 Python 解释器</li>
+      </ul></div>
+    <div class="col v2"><h4>Python 层 · 可自我修改的编排器</h4>
+      <div class="vt">orchestrator/default.py ~1.2k 行 · 自我进化在此发生</div>
+      <ul>
+        <li>Step 循环：调 LLM → 处理响应 → 重复</li>
+        <li>工具派发、别名映射</li>
+        <li>输出格式化、截断、上下文装配</li>
+        <li>跨 code step 的 <code>persisted_state</code> 状态管理</li>
+        <li><code>FINAL()</code> 终止信号提取</li>
+        <li>工具意图「轻推」（检测到只描述不行动）</li>
+        <li>记忆文档注入、技能选择与评分</li>
+      </ul></div>
+  </div>
+
+  <h3><span class="ic">▸</span>CodeAct — 两层 Python 嵌套执行</h3>
+  <p>v2 不止支持「结构化工具调用」（Tier 0），还支持 LLM <strong>直接写 Python 代码</strong>（Tier 1 / CodeAct）：
+  上下文作为 Python 变量而非塞进注意力窗口，工具调用 <code>await</code>，可 <code>asyncio.gather()</code> 并行。</p>
+  <div class="diagram">
+    <div class="dt">嵌套 Monty VM — 编排器 VM 调起用户代码 VM</div>
+    <div class="flow">
+      <div class="step"><div class="si">VM1</div><div class="sc"><b>编排器 VM（Monty #1）</b><p>跑 Step 循环；LLM 返回代码时调 <code>__execute_code_step__(code, state)</code> 并挂起</p></div></div>
+      <div class="conn a"></div>
+      <div class="step"><div class="si">VM2</div><div class="sc"><b>用户代码 VM（Monty #2）</b><p>Rust 为 LLM 写的代码新建嵌套 VM；代码调 <code>web_search()</code> 挂起 → 工具执行 → 恢复；调 <code>FINAL("答案")</code> 终止</p></div></div>
+      <div class="conn a"></div>
+      <div class="step"><div class="si">↩</div><div class="sc"><b>编排器恢复</b><p>用结果 dict 恢复 VM1，编排器决定下一步</p></div></div>
+    </div>
+  </div>
+  <p class="note">宿主函数（Monty 可调用）：<code>__llm_complete__</code> · <code>__execute_action__</code> · <code>__check_signals__</code> ·
+  <code>__retrieve_docs__</code> · <code>__check_budget__</code> · <code>__save_checkpoint__</code> · <code>__transition_to__</code> 等。</p>
+
+  <h3><span class="ic">▸</span>能力租约 — 没有静态权限，只有动态租约</h3>
+  <div class="callout sec">
+    <span class="ct">🔑 Capability Lease <span class="v ok" style="margin-left:8px">✓</span></span>
+    <p>Thread 不持有静态权限。它领取<strong>有作用域、有时限、有次数上限</strong>的租约：<code>CapabilityLease { thread_id, capability_name, granted_actions, expires_at, max_uses, revoked }</code>。</p>
+    <p><code>PolicyEngine</code> 确定性裁决：<code>Deny &gt; RequireApproval &gt; Allow</code>。动作按效应分类：ReadLocal / ReadExternal / WriteLocal / WriteExternal / CredentialedNetwork / Compute / Financial。</p>
+  </div>
+</section>
+
+<!-- ============ 7 · TOOLS ============ -->
+<section id="tools">
+  <h2><span class="n">07</span>工具系统 — 一切行动都经过工具<span class="mbadge ok">✓</span></h2>
+  <p class="sub">三种执行模型（原生 Rust / 沙箱 WASM / 远程 MCP）统一在一个 <code>Tool</code> trait 之后。
+  核心铁律：所有非智能体调用方（网关、CLI、Routine、WASM 渠道）<em class="em">必须经
+  <code>ToolDispatcher::dispatch()</code></em>，绝不直接碰 DB / workspace。</p>
+
+  <h3><span class="ic">▸</span>ToolDispatcher — 唯一的中枢咽喉</h3>
+  <p>为什么强制单一入口？因为每个 UI 发起的变更都应继承与智能体发起的工具调用<strong>同样的</strong>：
+  审计轨迹（<code>ActionRecord</code>）、安全管线（参数校验、敏感参数脱敏、输出消毒）、渠道无关性。
+  <code>scripts/pre-commit-safety.sh</code> 会标记 handler/CLI 文件里新增的直接 <code>state.store.*</code> 访问。</p>
+  <div class="diagram">
+    <div class="dt">dispatch() 管线 — 10 步</div>
+    <div class="hflow">
+      <div class="hbox"><b>① 注册表解析</b><span>tool name</span></div>
+      <div class="harr">→</div>
+      <div class="hbox"><b>② 参数归一化</b><span>类型强转·默认值</span></div>
+      <div class="harr">→</div>
+      <div class="hbox b-rd"><b>③ 注入检测</b><span>SafetyLayer</span></div>
+      <div class="harr">→</div>
+      <div class="hbox b-rd"><b>④ Schema 校验</b><span>JSON-Schema</span></div>
+      <div class="harr">→</div>
+      <div class="hbox"><b>⑤ 参数脱敏</b><span>日志用</span></div>
+    </div>
+    <div class="hflow">
+      <div class="hbox"><b>⑥ 建 system job</b><span>FK + 审计</span></div>
+      <div class="harr">→</div>
+      <div class="hbox b-gr"><b>⑦ 超时执行</b><span>per-tool timeout</span></div>
+      <div class="harr">→</div>
+      <div class="hbox b-rd"><b>⑧ 输出消毒</b><span>仅供审计</span></div>
+      <div class="harr">→</div>
+      <div class="hbox"><b>⑨ 存 ActionRecord</b><span>脱敏参数+消毒输出</span></div>
+      <div class="harr">→</div>
+      <div class="hbox b-am"><b>⑩ 返回原始输出</b><span>未消毒·给调用方</span></div>
+    </div>
+  </div>
+
+  <h3><span class="ic">▸</span>三类工具 — 同一个 Tool trait</h3>
+  <div class="grid g3">
+    <div class="card acc-g"><h4><span class="dot" style="background:var(--green)"></span>Builtin · ~28 个 <span class="mbadge ok" style="margin-left:auto">✓</span></h4>
+      <p>原生 Rust，直连 DB/FS。echo·time·json·http·shell · read/write_file·apply_patch·glob·grep · memory_* · *_job · tool_* · routine_* · skill_* · image_* 等。</p>
+      <span class="fp">src/tools/builtin/</span></div>
+    <div class="card acc-g"><h4><span class="dot" style="background:var(--green)"></span>WASM · 不可信 <span class="mbadge ok" style="margin-left:auto">✓</span></h4>
+      <p>wasmtime 组件模型；每次执行全新实例；fuel 计量、内存上限、超时全部生效。能力由 <code>capabilities.json</code> 声明。</p>
+      <span class="fp">src/tools/wasm/ · crates/ironclaw_wasm/</span></div>
+    <div class="card acc"><h4><span class="dot" style="background:var(--amber)"></span>MCP · 远程 <span class="mbadge part" style="margin-left:auto">⚠</span></h4>
+      <p>JSON-RPC；stdio / HTTP / Unix 三传输 + SSE 响应解析（<code>text/event-stream</code>）+ OAuth 均可用。唯一缺口：无<strong>渐进式 streaming</strong>——服务器进度通知被缓冲丢弃，agent 只拿最终结果。</p>
+      <span class="fp">src/tools/mcp/ · crates/ironclaw_mcp/</span></div>
+  </div>
+
+  <h3><span class="ic">▸</span>动态工具构建 — 自我扩展的实现 <span class="mbadge part" style="font-size:11px">⚠</span></h3>
+  <p>构建循环本身可用，但有两个真实缺口（CLAUDE.md「Current Limitations」明确列出）：
+  <strong>① WIT bindgen 自动抽取工具 schema 仍是桩</strong>；<strong>② 生成的工具拿到空 capabilities</strong>，需要 UX 来授予访问权。</p>
+  <div class="hflow">
+    <div class="hbox"><b>① 分析需求</b></div><div class="harr">→</div>
+    <div class="hbox"><b>② 生成脚手架</b></div><div class="harr">→</div>
+    <div class="hbox"><b>③ LLM 写实现</b></div><div class="harr">→</div>
+    <div class="hbox"><b>④ 编译 wasm32-wasip2</b></div><div class="harr">→</div>
+    <div class="hbox"><b>⑤ 解析错误重试</b></div><div class="harr">→</div>
+    <div class="hbox"><b>⑥ 测试</b></div><div class="harr">→</div>
+    <div class="hbox b-am"><b>⑦ 注册到 Registry</b></div>
+  </div>
+</section>
+
+<!-- ============ 8 · SKILLS ============ -->
+<section id="skills">
+  <h2><span class="n">08</span>Skills 架构 — 是的，有完整的技能系统<span class="mbadge ok">✓</span></h2>
+  <p class="sub">直接回答常见疑问：<strong>IronClaw 有完整的 Skills 架构</strong>，理念与 Claude Code 的 Skills 高度相似——
+  <code>SKILL.md</code> 文件（YAML frontmatter + markdown 正文）把领域知识注入 LLM 上下文。专属 crate
+  <code>ironclaw_skills/</code> 约 6.5k LOC，仓库根 <code>skills/</code> 目录有 <strong>31 个真实技能</strong>。</p>
+
+  <h3><span class="ic">▸</span>SKILL.md 格式与信任模型</h3>
+  <div class="grid g2">
+    <div class="card acc-g"><h4>SKILL.md 结构</h4>
+      <p>YAML frontmatter：<code>name · version · description · activation{patterns, keywords, exclude_keywords, tags, max_context_tokens} · requires{bins, env}</code>，后接 markdown 指令正文。</p>
+      <span class="fp">crates/ironclaw_skills/src/parser.rs</span></div>
+    <div class="card acc-r"><h4>信任模型 — 决定工具上限</h4>
+      <p><strong>Trusted</strong>：用户放在 <code>~/.ironclaw/skills/</code> 或 workspace — 全工具可用。</p>
+      <p><strong>Installed</strong>：从 ClawHub 注册表下载 — <strong>仅只读工具</strong>（无 shell、文件写、HTTP）。</p>
+      <span class="fp">crates/ironclaw_skills/src/types.rs · src/skills/attenuation.rs</span></div>
+  </div>
+
+  <h3><span class="ic">▸</span>四步选择管线</h3>
+  <div class="flow">
+    <div class="step"><div class="si">①</div><div class="sc"><b>Gating 门控</b><p>检查 binary / env / config 先决条件；缺失则跳过该技能</p></div></div>
+    <div class="conn a"></div>
+    <div class="step"><div class="si">②</div><div class="sc"><b>Scoring 确定性评分</b><p>keyword 精确 10 分（cap 30）· 子串 5 分 · tag 3 分（cap 15）· regex pattern 20 分（cap 40）；<code>exclude_keywords</code> 命中即一票否决（score=0）</p></div></div>
+    <div class="conn a"></div>
+    <div class="step"><div class="si">③</div><div class="sc"><b>Budget 预算</b><p>在 <code>SKILLS_MAX_TOKENS</code> 提示预算内贪心选取高分技能</p></div></div>
+    <div class="conn a"></div>
+    <div class="step"><div class="si">④</div><div class="sc"><b>Attenuation 信任衰减</b><p>所有激活技能的<strong>最低信任等级</strong>决定工具天花板；installed 技能丢掉危险工具</p></div></div>
+  </div>
+  <p class="note">4 个技能工具：<code>skill_list</code>（列出已发现技能）· <code>skill_search</code>（搜 ClawHub）· <code>skill_install</code>（下载安装，支持链式依赖）· <code>skill_remove</code>。完善度 ✓ 100%。</p>
+
+  <h3><span class="ic">▸</span>v1 vs v2 — 技能在两套引擎里的形态</h3>
+  <div class="vs">
+    <div class="col v1"><h4>v1 · Rust 侧确定性评分</h4>
+      <div class="vt">selector.rs · gating.rs · attenuation.rs</div>
+      <ul>
+        <li>Rust 的 <code>prefilter_skills()</code> 做评分（~1.2k LOC，完整）</li>
+        <li>加载时做门控检查</li>
+        <li><code>attenuation.rs</code> 按信任过滤工具</li>
+        <li>SKILL.md 即技能的唯一形态</li>
+      </ul></div>
+    <div class="col v2"><h4>v2 · 技能即 MemoryDoc</h4>
+      <div class="vt">DocType::Skill · 选择移交 Python 编排器</div>
+      <ul>
+        <li>技能存为 <code>MemoryDoc</code>，选择/评分在 <code>orchestrator/default.py</code></li>
+        <li><code>CodeSnippet</code>：技能可携带<strong>可执行 Python 函数</strong>，直接注册进 CodeAct 运行时</li>
+        <li><code>SkillMetrics</code>：usage / success / failure 计数 → 置信度，低分技能被降权</li>
+        <li><code>SkillRevision</code> + <code>SkillRepairRecord</code>：版本化 + 可回滚</li>
+        <li>可由 skill-extraction 学习任务<strong>自动抽取生成</strong></li>
+      </ul></div>
+  </div>
+
+  <h3><span class="ic">▸</span>仓库内的真实技能（抽查证实非空壳）</h3>
+  <div class="pillrow">
+    <span class="pill">coding</span><span class="pill">github</span><span class="pill">code-review</span>
+    <span class="pill am">llm-council</span><span class="pill am">delegation</span><span class="pill">commit</span>
+    <span class="pill">security-review</span><span class="pill">plan-mode</span><span class="pill">new-project</span>
+    <span class="pill">qa-review</span><span class="pill">routine-advisor</span><span class="pill">tech-debt-tracker</span>
+    <span class="pill">… 共 31 个</span>
+  </div>
+  <p class="note">其中 <code>skills/llm-council/SKILL.md</code> 直接演示了 <code>llm_query_batched()</code> 多模型并行调用——这把我们带到下一节。</p>
+</section>
+
+<!-- ============ 9 · MULTI-AGENT ============ -->
+<section id="multiagent">
+  <h2><span class="n">09</span>多智能体 · lead-sub · agent-as-tools<span class="mbadge part">⚠</span></h2>
+  <p class="sub">这一节回答两个常被混为一谈的问题：① 有没有「lead 协调器」？② 支不支持「agent-as-tools」？
+  二者<strong>正交</strong>——下面先把它们拆开，再与 <strong>OpenAI Agents SDK</strong> 横向对照。</p>
+
+  <h3><span class="ic">▸</span>先拆概念 — 两件不同的事</h3>
+  <div class="vs">
+    <div class="col v1"><h4>概念 A · 「lead 协调器」由谁扮演</h4>
+      <div class="vt">问的是：有没有专门的编排大脑</div>
+      <ul>
+        <li><strong>没有</strong>名为 <code>LeadAgent</code> / <code>Coordinator</code> 的结构体</li>
+        <li>每个 Thread 就是普通单智能体主循环 <code>ExecutionLoop</code></li>
+        <li>父 Thread 的循环顺带决定「派生什么子任务」——lead 角色被普通主循环<em class="em">隐式兼任</em></li>
+        <li>这只说明「缺一个显式协调器」，<strong>不构成</strong> agent-as-tools 的证据</li>
+      </ul></div>
+    <div class="col v2"><h4>概念 B · 「agent-as-tools」支不支持</h4>
+      <div class="vt">问的是：能不能把子智能体当可调用的东西</div>
+      <ul>
+        <li><strong>支持</strong>——靠 <code>create_job</code> 与 <code>llm_query</code> 两个机制</li>
+        <li>结构骨架是 <code>ThreadTree</code>（<code>runtime/tree.rs</code>，维护父子映射）；线程事件经 <code>EventKind</code> 枚举（<code>types/event.rs</code>）</li>
+        <li>与「谁当 lead」<strong>无关</strong>，是另一套独立能力</li>
+        <li>两机制各占「完整 / 同步」光谱的一半（见下表）</li>
+      </ul></div>
+  </div>
+
+  <h3><span class="ic">▸</span>agent-as-tools 的两个档次</h3>
+  <table>
+    <tr><th>维度</th><th>llm_query()</th><th>create_job()</th></tr>
+    <tr><td><b>本质</b></td><td>⚠ <strong>model-as-tool</strong>：单次 LLM 调用</td><td>✓ <strong>agent-as-tool</strong>：完整子智能体</td></tr>
+    <tr><td><b>有无完整 agent 循环</b></td><td><span class="v stub">✗</span> 无 ReAct 循环、无工具集</td><td><span class="v ok">✓</span> 子 Thread 跑自己的 ExecutionLoop + 工具 + 租约</td></tr>
+    <tr><td><b>调用是否同步</b></td><td><span class="v ok">✓</span> CodeAct 内同步 <code>await</code></td><td><span class="v stub">✗</span> 异步 fire-and-forget，返回 job_id</td></tr>
+    <tr><td><b>结果如何回到父</b></td><td>文本直接作为 Python 变量值</td><td>需再调 <code>job_status</code> / <code>job_events</code> 轮询</td></tr>
+    <tr><td><b>并行</b></td><td><code>llm_query_batched()</code> 多模型并行</td><td>多个 job 各自后台跑</td></tr>
+    <tr><td><b>定位</b></td><td>轻量、细粒度、即时</td><td>重量、可委派 Docker、可递归（3 mode：worker/claude_code/acp）</td></tr>
+    <tr><td><b>代码</b></td><td><code>ironclaw_engine/.../executor/scripting.rs</code></td><td><code>src/tools/builtin/job.rs</code></td></tr>
+  </table>
+
+  <h3><span class="ic">▸</span>横向对照 · OpenAI Agents SDK</h3>
+  <p>这个 <code>create_job</code> + <code>llm_query</code> 的模式，<strong>精神上接近</strong> OpenAI Agents SDK 的核心理念
+  「Agent = LLM + tools + instructions，且 tool 可以是另一个 Agent」，但架构落点不同。</p>
+  <table>
+    <tr><th>维度</th><th>OpenAI Agents SDK</th><th>IronClaw · create_job</th><th>IronClaw · llm_query</th></tr>
+    <tr><td><b>是否完整 agent loop</b></td><td><span class="v ok">✓</span> 子 agent 完整 ReAct</td><td><span class="v ok">✓</span> 子 Thread 完整 loop</td><td><span class="v stub">✗</span> 仅单次调用</td></tr>
+    <tr><td><b>调用是否同步</b></td><td><span class="v ok">✓</span> <strong>同步阻塞</strong>，跑完即返回</td><td><span class="v stub">✗</span> 异步轮询</td><td><span class="v ok">✓</span> 同步 await</td></tr>
+    <tr><td><b>结果流回父</b></td><td>子 agent 最终输出 = tool 返回值，直接进父下一轮</td><td>轮询 <code>job_events</code></td><td>Python 变量</td></tr>
+    <tr><td><b>Handoff（控制权转移）</b></td><td><span class="v ok">✓</span> 有原语：父停止、控制权完整转给子</td><td colspan="2"><span class="v stub">✗</span> 无 handoff——父子共存、互不终止</td></tr>
+  </table>
+  <div class="callout crit">
+    <span class="ct">⚠ 核心洞察 · 那块缺失的拼图</span>
+    <p>OpenAI Agents SDK 好用的本质，是它的 agent-as-tool 同时满足「<strong>同步 + 完整循环</strong>」——把子 agent 放进工具栏，
+    调用它就像调普通函数，跑完拿结果继续推理。</p>
+    <p>IronClaw 的两个机制<strong>各占一半</strong>：<code>llm_query</code> 同步但非完整循环；<code>create_job</code> 完整循环但异步。
+    「<strong>同步 + 完整循环</strong>」那个交集——<em class="em">「调一个完整子 agent、阻塞等它、把最终答案拿回来继续」</em>——目前<strong>没有对应原语</strong>。</p>
+    <p>底层 <code>ThreadManager::spawn_thread()</code> 有能力支撑它；缺的是在 CodeAct 暴露一个
+    <code>await run_agent(task, tools=[...])</code> 宿主函数。补上它，IronClaw 才真正对齐 OpenAI Agents SDK 的 agent-as-tool 体验。</p>
+  </div>
+
+  <h3><span class="ic">▸</span>更准确的类比对象</h3>
+  <p>把 IronClaw 的多智能体模型整体对标一个框架，<strong>不是</strong>单一的 OpenAI Agents SDK，而是三者叠加：</p>
+  <div class="hflow">
+    <div class="hbox b-st"><b>Claude Code Task 工具</b><span>create_job + Docker 沙箱<br>派生隔离子代理</span></div>
+    <div class="harr">+</div>
+    <div class="hbox b-pu"><b>LangGraph / Temporal</b><span>Thread 树 + 异步 Job<br>+ 持久状态的工作流</span></div>
+    <div class="harr">+</div>
+    <div class="hbox b-am"><b>CodeAct llm_query</b><span>比 OpenAI SDK 更细粒度的<br>「模型即函数」</span></div>
+  </div>
+  <p class="note">LangGraph 的 graph node、Temporal 的 workflow+activity，都把「子任务」当成<strong>异步、有状态的执行单元</strong>，
+  而非「同步函数调用」——这与 IronClaw 的 Thread 树 + 异步 Job 更贴合。OpenAI Agents SDK 则是轻量、同步、以 Python 为中心的编排。</p>
+
+  <h3><span class="ic">▸</span>lead → sub → 收敛 的实际结构</h3>
+  <div class="diagram">
+    <div class="dt">隐式 lead（ExecutionLoop）+ 应用层收敛</div>
+    <div class="flow">
+      <div class="step"><div class="si">L</div><div class="sc"><b>ExecutionLoop = 隐式 Lead（概念 A）</b><p>无 <code>LeadAgent</code> 结构体；主循环兼任：调 LLM、分发 Tier 0/Tier 1</p></div></div>
+      <div class="conn a"></div>
+      <div class="step"><div class="si">∥</div><div class="sc"><b>并行扇出 sub（概念 B）</b><p>Tier 0：已批准工具调用经 <code>JoinSet</code> 并发；Tier 1：<code>asyncio.gather(llm_query(...), tool(...))</code> 并行</p></div></div>
+      <div class="conn a"></div>
+      <div class="step"><div class="si">Σ</div><div class="sc"><b>收敛 — 在应用层</b><p>Tier 0 结果汇成 dict 回灌；多模型投票/共识由 <strong>Python 技能代码手写</strong>（如 <code>llm-council</code>），框架<strong>不内建</strong> reduce/vote/consensus</p></div></div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="ct">⚠ 一句话定性</span>
+    <p>IronClaw 提供了搭多智能体编排的<em class="em">积木</em>（Thread 树 ✓ · agent-as-tool ✓ · 并行扇出 ✓），
+    但「lead 协调 + 动态收敛」这层<em class="em">编排策略</em>留给 Python 编排器 / 技能去写。
+    与 Claude Code 把 sub-agent 编排留给 prompt、与 OpenAI Agents SDK 把它做成 SDK 原语，是三种不同取舍——
+    IronClaw 目前最接近「积木齐全、但缺一个同步 agent-as-tool 原语」的状态。</p>
+  </div>
+</section>
+
+<!-- ============ 10 · SECURITY ============ -->
+<section id="security">
+  <h2><span class="n">10</span>安全与沙箱 — 纵深防御<span class="mbadge ok">✓</span></h2>
+  <p class="sub">这是 IronClaw 的立身之本。安全不是某一层，而是贯穿全链路的多道关卡，是全项目最成熟的部分。</p>
+
+  <h3><span class="ic">▸</span>WASM 沙箱安全管线</h3>
+  <div class="diagram">
+    <div class="dt">不可信 WASM 工具发起一次 HTTP — 5 道关卡</div>
+    <div class="hflow">
+      <div class="hbox b-gr"><b>WASM 工具</b><span>untrusted</span></div>
+      <div class="harr">→</div>
+      <div class="hbox b-rd"><b>① Allowlist</b><span>host/path/method</span></div>
+      <div class="harr">→</div>
+      <div class="hbox b-rd"><b>② Leak 扫描</b><span>注入前·查 URL/头</span></div>
+      <div class="harr">→</div>
+      <div class="hbox b-am"><b>③ 凭证注入</b><span>解密·WASM 看不见</span></div>
+      <div class="harr">→</div>
+      <div class="hbox"><b>④ 执行请求</b><span>→ 外部 API</span></div>
+      <div class="harr">→</div>
+      <div class="hbox b-rd"><b>⑤ Leak 扫描</b><span>响应·脱敏</span></div>
+    </div>
+  </div>
+
+  <h3><span class="ic">▸</span>四大安全支柱</h3>
+  <div class="grid g2">
+    <div class="card acc-r"><h4><span class="dot" style="background:var(--red)"></span>凭证零暴露模型 <span class="mbadge ok" style="margin-left:auto">✓</span></h4>
+      <p>Secrets 经 AES-256-GCM 加密、主密钥存 OS 钥匙串。工具<strong>永远拿不到原文</strong>——内置 HTTP 工具按请求 host 匹配凭证注册表、在传输时透明注入。<code>ResolvedHostCredential</code> 连 Debug 输出都自动脱敏。已知缺口：密钥轮换未实现。</p>
+      <span class="fp">src/secrets/ · ironclaw_secrets · wasm/credential_injector.rs</span></div>
+    <div class="card acc-r"><h4><span class="dot" style="background:var(--red)"></span>提示注入防御 <span class="mbadge ok" style="margin-left:auto">✓</span></h4>
+      <p><code>SafetyLayer</code> = Sanitizer + Validator + Policy + LeakDetector。每个新入口在<strong>存储或喂给 LLM 之前</strong>都扫描：入站用户文本、工具输出、LLM 响应、记忆写入、URL 抓取。策略带 Severity（Critical/High/Medium/Low）与 Action（Block/Warn/Review/Sanitize）。</p>
+      <span class="fp">crates/ironclaw_safety/</span></div>
+    <div class="card acc-r"><h4><span class="dot" style="background:var(--red)"></span>资源限制与隔离 <span class="mbadge ok" style="margin-left:auto">✓</span></h4>
+      <p>WASM：fuel 指令预算、内存上限（默认 10MB）、超时（epoch 心跳）、每实例 HTTP/工具调用/日志计数。Docker 沙箱：cap-drop、非 root、内存限制、网络隔离 + 域名白名单代理。</p>
+      <span class="fp">src/tools/wasm/limits.rs · src/sandbox/</span></div>
+    <div class="card acc-r"><h4><span class="dot" style="background:var(--red)"></span>信任 + 授权 + 审批 三层 <span class="mbadge ok" style="margin-left:auto">✓</span></h4>
+      <p><code>ironclaw_trust</code> 定信任等级天花板（FirstParty/System/Sandbox/UserTrusted）；<code>ironclaw_authorization</code> 按显式 Grant + 信任天花板做租约授权；<code>ironclaw_approvals</code> 解析审批、发放租约（fail-closed：先发租约再标批准）。</p>
+      <span class="fp">crates/ironclaw_trust · _authorization · _approvals</span></div>
+  </div>
+
+  <h3><span class="ic">▸</span>审批门 · 风险分级</h3>
+  <table>
+    <tr><th>RiskLevel</th><th>含义</th><th>ApprovalRequirement</th></tr>
+    <tr><td><b style="color:var(--green)">Low</b></td><td>只读、可逆（ls / cat / grep）</td><td><code>Never</code> — 默认放行</td></tr>
+    <tr><td><b style="color:var(--amber)">Medium</b></td><td>改状态但可逆（mkdir / git commit）</td><td><code>UnlessAutoApproved</code> — 除非会话内已自动批准</td></tr>
+    <tr><td><b style="color:var(--red)">High</b></td><td>破坏性、不可逆（rm -rf / git push --force）</td><td><code>Always</code> — 永远提示</td></tr>
+  </table>
+  <p class="note">后台 Job 用 <code>ApprovalContext::Autonomous</code> 携带显式 <code>allowed_tools</code> 白名单，超出白名单的高危工具被直接阻断。</p>
+</section>
+
+<!-- ============ 11 · CRATES ============ -->
+<section id="crates">
+  <h2><span class="n">11</span>30 个 Crate 地图</h2>
+  <p class="sub">Reborn 重构把宿主能力拆成 30 个 crate。下表按职责分组，<code>ironclaw_host_api</code> 是零依赖的最底层权威词汇。</p>
+
+  <h3><span class="ic">▸</span>L1 · 权威与安全词汇</h3>
+  <table>
+    <tr><th>Crate</th><th>职责</th><th>关键类型</th></tr>
+    <tr><td><b>ironclaw_host_api</b></td><td>跨层契约：ID、作用域、路径、动作、决策。零依赖。</td><td><code>ExecutionContext · CapabilityGrant · Decision</code></td></tr>
+    <tr><td><b>ironclaw_common</b></td><td>共享类型、路径、平台助手</td><td><code>CredentialName · ExtensionName · ValidTimezone</code></td></tr>
+    <tr><td><b>ironclaw_trust</b></td><td>宿主控制的信任等级策略引擎</td><td><code>EffectiveTrustClass · TrustPolicy · AuthorityCeiling</code></td></tr>
+    <tr><td><b>ironclaw_safety</b></td><td>提示注入防御、输入校验、泄漏检测</td><td><code>SafetyLayer · Sanitizer · LeakDetector · Policy</code></td></tr>
+  </table>
+
+  <h3><span class="ic">▸</span>L2 · 基础设施服务</h3>
+  <table>
+    <tr><th>Crate</th><th>职责</th></tr>
+    <tr><td><b>ironclaw_filesystem</b></td><td>带虚拟路径的作用域文件系统服务（ScopedPath · MountView）</td></tr>
+    <tr><td><b>ironclaw_network</b></td><td>网络策略评估、DNS 强制、HTTP 出站边界</td></tr>
+    <tr><td><b>ironclaw_secrets</b></td><td>租户作用域的密钥存储与租借（SecretHandle · SecretLease）</td></tr>
+    <tr><td><b>ironclaw_resources</b></td><td>资源预留、对账、配额核算（ResourceGovernor）</td></tr>
+    <tr><td><b>ironclaw_events</b></td><td>运行时事件、审计信封、持久追加日志</td></tr>
+  </table>
+
+  <h3><span class="ic">▸</span>L3 · 扩展 · 授权 · 审批</h3>
+  <table>
+    <tr><th>Crate</th><th>职责</th></tr>
+    <tr><td><b>ironclaw_extensions</b></td><td>扩展清单解析、注册表、能力描述符</td></tr>
+    <tr><td><b>ironclaw_authorization</b></td><td>能力授权、Grant 匹配、租约状态（信任感知派发授权）</td></tr>
+    <tr><td><b>ironclaw_approvals</b></td><td>审批解析、租约发放/撤销</td></tr>
+    <tr><td><b>ironclaw_run_state</b></td><td>持久化的调用状态与审批请求记录</td></tr>
+  </table>
+
+  <h3><span class="ic">▸</span>L4 · 能力 · 进程 · 记忆 · 派发</h3>
+  <table>
+    <tr><th>Crate</th><th>职责</th></tr>
+    <tr><td><b>ironclaw_capabilities</b></td><td>面向调用方的能力调用宿主（CapabilityHost），协调授权/审批</td></tr>
+    <tr><td><b>ironclaw_dispatcher</b></td><td>纯组合：把已授权调用路由到 WASM/Script/MCP 车道</td></tr>
+    <tr><td><b>ironclaw_processes</b></td><td>进程生命周期记录、后台进程管理器</td></tr>
+    <tr><td><b>ironclaw_memory</b></td><td>记忆文档仓库、<code>/memory</code> 路径文法、索引器</td></tr>
+  </table>
+
+  <h3><span class="ic">▸</span>L5 · 运行时车道（执行）</h3>
+  <table>
+    <tr><th>Crate</th><th>职责</th></tr>
+    <tr><td><b>ironclaw_llm</b></td><td>多供应商 LLM 集成：重试、故障转移、熔断、缓存（LlmProvider trait）</td></tr>
+    <tr><td><b>ironclaw_embeddings</b></td><td>带 LRU 缓存的嵌入供应商（OpenAI/NEAR AI/Ollama/Bedrock）</td></tr>
+    <tr><td><b>ironclaw_wasm</b></td><td>WASM 组件运行时车道（WIT / 组件模型 / 宿主导入）</td></tr>
+    <tr><td><b>ironclaw_mcp</b></td><td>MCP 运行时车道（客户端抽象、JSON-RPC、资源核算）</td></tr>
+    <tr><td><b>ironclaw_scripts</b></td><td>脚本 / CLI 运行时车道（清单驱动、Docker 后端）</td></tr>
+  </table>
+
+  <h3><span class="ic">▸</span>L6–L7 · 引擎 · 宿主 · 用户表面</h3>
+  <table>
+    <tr><th>Crate</th><th>职责</th></tr>
+    <tr><td><b>ironclaw_engine</b></td><td>统一 Thread-Capability-CodeAct 执行引擎（5 原语 · 学习任务）</td></tr>
+    <tr><td><b>ironclaw_host_runtime</b></td><td>宿主运行时门面（HostRuntime trait · 凭证注入 · HTTP 出站边界）</td></tr>
+    <tr><td><b>ironclaw_gateway</b></td><td>前端资源、布局配置、Widget 系统</td></tr>
+    <tr><td><b>ironclaw_tui</b></td><td>模块化 Ratatui 终端 UI</td></tr>
+    <tr><td><b>ironclaw_oauth</b></td><td>OAuth 回调监听器（环回 9876 端口）、落地页</td></tr>
+    <tr><td><b>ironclaw_skills</b></td><td>技能类型、SKILL.md 解析、选择（v2 把选择委托给 Python 编排器）</td></tr>
+    <tr><td><b>ironclaw_architecture</b></td><td>仅测试 — 强制 crate 边界规则，无生产代码</td></tr>
+    <tr><td><b>ironclaw_silk_decoder</b></td><td>独立的微信 SILK v3 语音解码器（隔离 · 需 libclang）</td></tr>
+  </table>
+</section>
+
+<!-- ============ 12 · MEMORY ============ -->
+<section id="memory">
+  <h2><span class="n">12</span>持久化与记忆<span class="mbadge ok">✓</span></h2>
+  <p class="sub">「<strong>LLM 数据永不删除</strong>」是铁律——喂给模型的上下文、推理、工具调用、消息、事件、步骤，是系统最宝贵的数据。
+  内存里的 HashMap 只是缓存，数据库（经 Workspace）才是真相之源。这是全项目实证完善度最高的部分之一。</p>
+
+  <h3><span class="ic">▸</span>双后端持久化 <span class="mbadge ok" style="font-size:11px">✓</span></h3>
+  <div class="grid g2">
+    <div class="card acc-s"><h4>PostgreSQL</h4><p>生产级；<code>pgvector</code> 存嵌入向量、<code>pg_trgm</code> 做全文检索。9 个迁移版本（V1–V9）。</p></div>
+    <div class="card acc-s"><h4>libSQL / Turso</h4><p>SQLite 进程内，可复制到云。所有新持久化特性<strong>必须同时支持两后端</strong>。已知瓶颈：libSQL 写串行化（WAL）。</p></div>
+  </div>
+
+  <h3><span class="ic">▸</span>Workspace 记忆 — 混合检索 <span class="mbadge ok" style="font-size:11px">✓</span></h3>
+  <p>持久记忆系统，四个工具：<code>memory_search</code> · <code>memory_write</code> · <code>memory_read</code> · <code>memory_tree</code>。
+  检索用 <strong>混合策略</strong>：全文检索（FTS）+ 向量检索，经 <em class="em">RRF（Reciprocal Rank Fusion，倒数排名融合）</em>合并结果。
+  Chunk 级版本化 + SHA-256 哈希。</p>
+  <div class="diagram">
+    <div class="dt">虚拟 /memory 路径文法</div>
+    <div class="hflow">
+      <div class="hbox"><b>tenant_id</b></div><div class="harr">/</div>
+      <div class="hbox"><b>user_id</b></div><div class="harr">/</div>
+      <div class="hbox"><b>projects/{id}</b><span>可选</span></div><div class="harr">/</div>
+      <div class="hbox b-am"><b>{doc}.md</b><span>+ .metadata · .search/fts · .search/embeddings · .versions</span></div>
+    </div>
+  </div>
+  <p class="note">身份文件（<code>AGENTS.md · SOUL.md · USER.md · IDENTITY.md</code>）注入系统提示，跨会话维持人格与偏好一致。
+  MemoryDoc 类型：Summary / Lesson / Skill / Issue / Spec / Note。</p>
+</section>
+
+<!-- ============ 13 · LEARNING ============ -->
+<section id="learning">
+  <h2><span class="n">13</span>自我进化闭环（Engine v2）<span class="mbadge part">⚠</span></h2>
+  <p class="sub">v2 在线程完成后<strong>事件驱动</strong>地触发四类「学习任务」（Learning Mission），让系统从自己的执行轨迹里学习。
+  这是 IronClaw 最有野心的设计——下面给出代码层面的实证评级与一份诚实的专业评判。</p>
+  <table>
+    <tr><th>Mission</th><th>触发条件</th><th>作用</th><th>评级</th></tr>
+    <tr><td><b>self-improvement</b></td><td>线程完成且轨迹有问题</td><td>诊断根因 → 应用提示叠加层 或 给编排器打补丁</td><td><span class="v ok">✓</span></td></tr>
+    <tr><td><b>skill-extraction</b></td><td>线程成功且 ≥5 步、≥3 工具</td><td>抽取可复用技能（含 CodeAct 代码片段 + 激活元数据）</td><td><span class="v ok">✓</span></td></tr>
+    <tr><td><b>skill-repair</b></td><td>用到的技能轨迹显示指令陈旧</td><td>带回滚历史的版本化更新</td><td><span class="v ok">✓</span></td></tr>
+    <tr><td><b>conversation-insights</b></td><td>每 5 个完成的线程</td><td>抽取用户偏好、领域知识、工作流模式</td><td><span class="v ok">✓</span></td></tr>
+  </table>
+  <h3><span class="ic">▸</span>self-improvement 的三级风险阶梯</h3>
+  <div class="flow">
+    <div class="step"><div class="si">L1</div><div class="sc"><b>更新提示叠加层</b><p>低风险 · <strong>自动应用</strong></p></div></div>
+    <div class="conn a"></div>
+    <div class="step"><div class="si">L2</div><div class="sc"><b>给 Python 编排器打补丁</b><p>中风险 · 版本化（可回滚）· <strong>自动应用</strong></p></div></div>
+    <div class="conn a"></div>
+    <div class="step"><div class="si">L3</div><div class="sc"><b>提议 Rust 代码改动</b><p>高风险 · <strong>需人工评审</strong>，不自动应用</p></div></div>
+  </div>
+
+  <div class="callout warn">
+    <span class="ct">⚠ 专业评判 · 站在 staff engineer 视角，这个闭环到底成熟到什么程度？</span>
+    <p><strong>代码层面 — 真实、完整、有测试。</strong>不是 vaporware，也不是 scaffolding：<code>MissionManager</code> 约 8.5k LOC，
+    4 个 mission 全部接线，事件驱动监听 <code>ThreadOutcome::Completed</code>，5 个 <code>prompt/mission_*.md</code> 模板齐全，
+    <code>ironclaw_engine</code> 整体 527 个测试。把它当「已落地的能力」看是公允的。</p>
+    <p><strong>但有三点必须诚实说明，所以整体给 ⚠ 而非 ✓：</strong></p>
+    <p>① <strong>「实现且测试通过」≠「能让 agent 可度量地变好」。</strong>自我改进的<em class="em">有效性</em>是经验问题——
+    需要纵向指标证明 agent 真的随时间变强。代码审计能证明「闭环会运转」，无法证明「闭环有正收益」。</p>
+    <p>② <strong>真正自主的只有 L1 / L2</strong>（提示叠加、编排器补丁）；L3（改 Rust）人工把关。
+    所以「自我修改」是<em class="em">有边界</em>的——这是<strong>好的</strong>安全设计，但也意味着别把它想象成无限自我重写。</p>
+    <p>③ <strong>整条闭环只在 <code>ENGINE_V2=true</code> 下运行</strong>，而 v2 目前 opt-in、非默认。今天绝大多数用户其实拿不到它。</p>
+  </div>
+
+  <h3><span class="ic">▸</span>横向类比 · 自我进化闭环 vs Claude Code</h3>
+  <div class="vs">
+    <div class="col v1"><h4>Claude Code</h4>
+      <div class="vt">人工策划 · 无自演化 — 是有意的保守</div>
+      <ul>
+        <li><code>CLAUDE.md</code> — 人工写的记忆/规则，不自动生长</li>
+        <li>Skills — 人工撰写或安装，不从轨迹自抽</li>
+        <li>Hooks — 人工配置的生命周期钩子</li>
+        <li><strong>不会</strong>诊断自己的失败并改自己的编排逻辑</li>
+        <li>优点：行为可预测、无能力漂移、易审计</li>
+      </ul></div>
+    <div class="col v2"><h4>IronClaw Engine v2</h4>
+      <div class="vt">事件驱动自演化 — 设计明显更激进</div>
+      <ul>
+        <li>4 个学习任务从<strong>自己的执行轨迹</strong>学习</li>
+        <li>skill-extraction <strong>自动抽取</strong>新技能（带可执行代码）</li>
+        <li>self-improvement <strong>自动改</strong>提示层 / 编排器代码（L1/L2）</li>
+        <li>skill-repair 版本化修复陈旧技能、可回滚</li>
+        <li>代价：需要 metrics/置信度系统防止低质技能堆积；效果待经验验证；仅 v2 可用</li>
+      </ul></div>
+  </div>
+  <p class="note">一句话：<strong>在「自我进化」这一维，IronClaw 是真投入了工程、做出了 Claude Code 刻意没做的东西</strong>——
+  但「更激进」不等于「更好」。Claude Code 的「不自演化」是为可预测性付的费；IronClaw 的闭环是为适应性下的注，
+  注是否赢，要看 metrics，而不是看代码行数。</p>
+</section>
+
+<!-- ============ 14 · AUDIT ============ -->
+<section id="audit">
+  <h2><span class="n">14</span>成熟度总审计 — 逐项 ✓ / ⚠ / ✗</h2>
+  <p class="sub">本节是<strong>纯三档评级</strong>，不再给百分比——百分比是合成的精度幻觉，且正是早期被审计代理「具体化幻觉」污染的格式。
+  评级方法：3 个证据采集子代理只回传<strong>原始 grep / GitHub issue 输出</strong>，由人工逐项判定。证据列只写<strong>本轮实测核对过的事实</strong>。</p>
+
+  <div class="callout warn">
+    <span class="ct">⚠ 本轮修正了两处早期审计代理编造的「具体证据」</span>
+    <p>① Thread 树事件名 <code>ChildThreadSpawned</code> / <code>ChildThreadCompleted</code> —— <code>grep</code> 全仓<strong>无匹配</strong>，名字是编造的（实际线程事件经 <code>EventKind</code> 枚举）。</p>
+    <p>② 领域工具 <code>marketplace.rs</code> / <code>restaurant.rs</code> —— <code>find src/</code> <strong>无此文件</strong>（CLAUDE.md 仍把它们列为桩，文档可能已过期）。</p>
+    <p>教训：探索类子代理适合画「地图」，不适合下「判决」——判决需逐行证据，否则它会把概括包装成精确。</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="big" style="color:var(--text)">41</div><div class="lb">逐项核查条目</div></div>
+    <div class="stat"><div class="big" style="color:var(--green)">30</div><div class="lb">✓ 实现完整</div></div>
+    <div class="stat"><div class="big" style="color:var(--amber)">8</div><div class="lb">⚠ 可用但有具名缺口</div></div>
+    <div class="stat"><div class="big" style="color:var(--red)">3</div><div class="lb">✗ 桩 / 缺失</div></div>
+  </div>
+  <p class="note">三档定义：<span class="v ok">✓</span> 实现完整、关键类型/函数已定位、无桩标记；
+  <span class="v part">⚠</span> 主干可用但有<strong>明确具名</strong>的缺口；<span class="v stub">✗</span> 桩、仅设计、或文件不存在。</p>
+
+  <table>
+    <tr><th>能力项</th><th style="width:64px">评级</th><th>本轮实测证据 / 具名缺口</th></tr>
+
+    <tr class="grouprow"><td colspan="3">引擎与执行核心</td></tr>
+    <tr><td><b>Legacy v1 Agent 循环</b></td><td><span class="v ok">✓</span></td>
+      <td><code>run_agentic_loop</code> 定义 <code>agentic_loop.rs:214</code>；src/agent/ 实测 22 文件；当前默认运行引擎</td></tr>
+    <tr><td><b>Engine v2 整体</b></td><td><span class="v ok">✓</span></td>
+      <td>crates/ironclaw_engine/src/ 实测 53 个 .rs；<code>grep todo!|unimplemented!|FIXME|TODO</code> = <strong>0 命中</strong>；数百个 <code>#[test]</code>。缺口：<code>ENGINE_V2</code> 默认关闭，见下</td></tr>
+    <tr><td><b>5 原语（Thread/Step/Capability/MemoryDoc/Project）</b></td><td><span class="v ok">✓</span></td>
+      <td>五类型定义均已定位：thread.rs / step.rs:56 / capability.rs:334 / memory.rs:53 / project.rs:73</td></tr>
+    <tr><td><b>CodeAct / Monty VM（Tier 1）</b></td><td><span class="v ok">✓</span></td>
+      <td><code>monty</code> 为真实 crate 依赖（engine Cargo.toml，tag v0.0.16）；scripting.rs 存在；<code>__execute_code_step__</code> handler 定位于 orchestrator.rs</td></tr>
+    <tr><td><b>Python 编排器 default.py</b></td><td><span class="v ok">✓</span></td>
+      <td><code>crates/ironclaw_engine/orchestrator/default.py</code> 实测存在（约千行级）</td></tr>
+    <tr><td><b>能力租约 + PolicyEngine</b></td><td><span class="v ok">✓</span></td>
+      <td>lease.rs 含 grant/check/consume/revoke/derive_child_leases；policy.rs 含 evaluate/evaluate_with_provenance</td></tr>
+    <tr><td><b>ENGINE_V2 接线 / bridge</b></td><td><span class="v part">⚠</span></td>
+      <td>bridge/router.rs 条件路由完整；<strong>但</strong> config 读 <code>parse_bool_env("ENGINE_V2", false)</code> —— 默认关闭，opt-in，多数用户不走 v2</td></tr>
+
+    <tr class="grouprow"><td colspan="3">渠道与网关</td></tr>
+    <tr><td><b>Channel trait + ChannelManager</b></td><td><span class="v ok">✓</span></td>
+      <td><code>trait Channel</code> channel.rs:894；<code>select_all</code> 流合并 manager.rs:131</td></tr>
+    <tr><td><b>Web Gateway（SSE + WS）</b></td><td><span class="v ok">✓</span></td>
+      <td>features/ 实测 10 个切片目录；platform/ 含 sse.rs + ws.rs；该目录 TODO grep = 1 命中</td></tr>
+    <tr><td><b>WASM 渠道（TG/Slack/Discord/WeChat/Feishu）</b></td><td><span class="v part">⚠</span></td>
+      <td>激活路径<strong>已实现</strong>（<code>register_channel</code> + <code>complete_loaded_wasm_channel_activation</code>）；src/channels/wasm/ 仅 1 个 TODO。具名缺口：开放精修 bug #2558 / #2564 / #2419 / #2263</td></tr>
+    <tr><td><b>HTTP Webhook 渠道</b></td><td><span class="v ok">✓</span></td>
+      <td>http.rs 存在；<code>HmacSha256</code> 验签 :31/:210；限流 + 同步响应关联</td></tr>
+    <tr><td><b>Tunnel（5 个 provider）</b></td><td><span class="v ok">✓</span></td>
+      <td>cloudflare/custom/ngrok/none/tailscale 五文件齐；该目录 todo!/unimplemented! grep = 0</td></tr>
+    <tr><td><b>Pairing 配对</b></td><td><span class="v ok">✓</span></td>
+      <td>src/pairing/ 含 approval.rs / code.rs / store.rs</td></tr>
+
+    <tr class="grouprow"><td colspan="3">工具与扩展</td></tr>
+    <tr><td><b>Tool trait + ToolDispatcher 中枢</b></td><td><span class="v ok">✓</span></td>
+      <td><code>trait Tool</code> tool.rs:321；<code>fn dispatch</code> dispatch.rs:116（含脱敏/超时/ActionRecord 测试）</td></tr>
+    <tr><td><b>Builtin 工具（约 28 个）</b></td><td><span class="v ok">✓</span></td>
+      <td>src/tools/builtin/ 实测 28 个文件（echo/http/shell/file/memory/job/routine/skill/image…）</td></tr>
+    <tr><td><b>WASM 工具沙箱（安全管线）</b></td><td><span class="v ok">✓</span></td>
+      <td>wasm/ 14 文件，allowlist/credential_injector/limits 均在；TODO grep = 2 命中，<strong>均与安全管线无关</strong>（fuel 值 #2368、oauth capability 扩展）</td></tr>
+    <tr><td><b>MCP 集成</b></td><td><span class="v part">⚠</span></td>
+      <td>stdio/HTTP/Unix 三传输 + SSE 响应解析（http_transport.rs <code>parse_sse_response</code>）+ OAuth 均在。具名缺口：无<strong>渐进式 streaming</strong>——进度通知被缓冲丢弃（CLAUDE.md 限制 #3）</td></tr>
+    <tr><td><b>动态工具构建</b></td><td><span class="v part">⚠</span></td>
+      <td>builder/ 5 文件、无 stub 标记。具名缺口（依 CLAUDE.md 限制 #4/#5）：WIT schema 自动抽取是桩、生成工具得空 capabilities</td></tr>
+    <tr><td><b>扩展注册表（manifest/catalog/installer）</b></td><td><span class="v ok">✓</span></td>
+      <td>src/registry/ 含 manifest.rs / catalog.rs / installer.rs / artifacts.rs / embedded.rs</td></tr>
+    <tr><td><b>Skills 架构</b></td><td><span class="v ok">✓</span></td>
+      <td>ironclaw_skills/src 9 模块（selector/gating/registry/catalog/v2…）；skill_tools.rs 存在；skills/ 实测 31 个目录，coding/github 的 SKILL.md 实测有内容</td></tr>
+    <tr><td><b>Hooks（6 个生命周期点）</b></td><td><span class="v ok">✓</span></td>
+      <td>hook.rs:13–35 定义 6 个 <code>HookPoint</code>；bundled.rs:25–30 全部使用</td></tr>
+
+    <tr class="grouprow"><td colspan="3">安全</td></tr>
+    <tr><td><b>SafetyLayer（注入/泄漏/策略）</b></td><td><span class="v ok">✓</span></td>
+      <td>ironclaw_safety/src 7 文件；<code>SafetyLayer</code> lib.rs:34 · <code>LeakDetector</code> leak_detector.rs:132 · <code>Sanitizer</code> sanitizer.rs:35</td></tr>
+    <tr><td><b>凭证零暴露 + Secrets（AES-256-GCM + 钥匙串）</b></td><td><span class="v ok">✓</span></td>
+      <td>crypto.rs 用 <code>Aes256Gcm</code>（:16/:75/:80）；keychain.rs 存在。具名缺口：密钥轮换未实现</td></tr>
+    <tr><td><b>Docker 沙箱 + Orchestrator/Worker</b></td><td><span class="v ok">✓</span></td>
+      <td>sandbox/ orchestrator/ worker/ 文件齐（含 proxy/、job_manager、reaper）；该范围 TODO grep = 0</td></tr>
+    <tr><td><b>claude_bridge（spawn claude CLI）</b></td><td><span class="v ok">✓</span></td>
+      <td>claude_bridge.rs 实测确认 spawn <code>claude -p … --output-format stream-json</code>、写 <code>/workspace/.claude/settings.json</code></td></tr>
+
+    <tr class="grouprow"><td colspan="3">持久化与记忆</td></tr>
+    <tr><td><b>双后端 DB（PostgreSQL + libSQL）</b></td><td><span class="v ok">✓</span></td>
+      <td>src/db/ 含 postgres.rs + libsql/ 目录 + libsql_migrations.rs。已知缺口：libSQL 写串行化瓶颈</td></tr>
+    <tr><td><b>Workspace 混合检索（FTS + 向量 RRF）</b></td><td><span class="v ok">✓</span></td>
+      <td>search.rs 含 <code>reciprocal_rank_fusion</code> / <code>rrf_k</code> / <code>fuse_results</code> / <code>FusionStrategy</code></td></tr>
+    <tr><td><b>Heartbeat 心跳</b></td><td><span class="v ok">✓</span></td>
+      <td>heartbeat.rs 实测：读 <code>HEARTBEAT.md</code>、<code>HEARTBEAT_OK</code> 静默、<code>MAX_CONCURRENT_HEARTBEATS</code></td></tr>
+    <tr><td><b>Routines 引擎（cron/event/webhook）</b></td><td><span class="v ok">✓</span></td>
+      <td><code>RoutineEngine</code> 定义 <code>src/agent/routine_engine.rs:106</code></td></tr>
+
+    <tr class="grouprow"><td colspan="3">多智能体与自我进化</td></tr>
+    <tr><td><b>Thread 树（父子派生）</b></td><td><span class="v ok">✓</span></td>
+      <td><code>runtime/tree.rs</code> 存在；线程事件经 <code>EventKind</code> 枚举（event.rs:248）。<strong>修正</strong>：先前所写 <code>ChildThreadSpawned/Completed</code> 事件名 grep 无匹配，已删除</td></tr>
+    <tr><td><b>agent-as-tool（llm_query / batched）</b></td><td><span class="v ok">✓</span></td>
+      <td>scripting.rs：<code>handle_llm_query</code> :1683、<code>handle_llm_query_batched</code> :1753</td></tr>
+    <tr><td><b>create_job 子智能体派生</b></td><td><span class="v ok">✓</span></td>
+      <td><code>CreateJobTool</code> src/tools/builtin/job.rs:84；3 种 mode、可委派 Docker、可递归</td></tr>
+    <tr><td><b>并行执行（asyncio.gather / JoinSet）</b></td><td><span class="v ok">✓</span></td>
+      <td>scripting.rs 注释与代码确认支持 <code>asyncio.gather(llm_query(...), tool(...))</code> 并行扇出</td></tr>
+    <tr><td><b>显式 lead coordinator</b></td><td><span class="v part">⚠</span></td>
+      <td>具名缺口：<strong>无</strong> <code>LeadAgent</code> / <code>Coordinator</code> 结构体；ExecutionLoop 隐式兼任 lead</td></tr>
+    <tr><td><b>动态收敛（vote / consensus / reduce）</b></td><td><span class="v part">⚠</span></td>
+      <td>具名缺口：框架<strong>不内建</strong>收敛器；vote/consensus 落在应用层 Python 技能（llm-council）</td></tr>
+    <tr><td><b>4 个学习任务（mission）</b></td><td><span class="v ok">✓</span></td>
+      <td>mission.rs 实测含 <code>ensure_self_improvement_mission</code> / skill_repair / skill_extraction / conversation_insights 全接线；<code>include_str!</code> 引入 4 个 prompt 文件</td></tr>
+    <tr><td><b>自我进化闭环「有效性」</b></td><td><span class="v part">⚠</span></td>
+      <td>代码完整可运转；具名缺口：「能否让 agent 可度量变好」需纵向 metrics，代码无法自证；且仅 v2（opt-in）</td></tr>
+
+    <tr class="grouprow"><td colspan="3">已知桩 / 缺口</td></tr>
+    <tr><td><b>领域工具（marketplace / restaurant）</b></td><td><span class="v stub">✗</span></td>
+      <td><strong>修正</strong>：<code>find src/</code> 查无 <code>marketplace.rs</code> / <code>restaurant.rs</code> —— 文件不存在（CLAUDE.md 限制 #1 仍列其为桩，疑文档过期）。作为可用能力：不存在</td></tr>
+    <tr><td><b>Observability — OpenTelemetry</b></td><td><span class="v part">⚠</span></td>
+      <td>observability/ 仅 log.rs / noop.rs / multi.rs；无 opentelemetry crate 依赖。OTel / Prometheus 仅设计未建</td></tr>
+    <tr><td><b>工具版本化 / 回滚</b></td><td><span class="v stub">✗</span></td>
+      <td>grep 未见 version/rollback 机制（仅有 EngineVersion 可见性过滤）；CLAUDE.md 限制 #6 确认</td></tr>
+    <tr><td><b>WIT bindgen 自动抽取工具 schema</b></td><td><span class="v stub">✗</span></td>
+      <td>依据 CLAUDE.md 限制 #4 列为桩；本轮未在代码独立定位该桩位置——此项<strong>仅文档来源、未代码实证</strong></td></tr>
+  </table>
+
+  <div class="callout sec">
+    <span class="ct">✓ 一句话总评</span>
+    <p>IronClaw 的<strong>核心智能体链路（v1 执行、工具、WASM 沙箱、安全、持久化、记忆、路由、心跳）实现完整</strong>，关键类型/函数均已逐项定位；
+    Engine v2 与自我进化闭环<strong>代码完整、无桩标记</strong>，但 <code>ENGINE_V2</code> 默认关闭、闭环有效性待经验验证；
+    真正的短板是<strong>少数次级集成</strong>（MCP 渐进式 streaming、WASM 渠道精修 bug、OpenTelemetry）与<strong>三个明示桩项</strong>。
+    全项目<strong>未见隐藏的 vaporware</strong>。</p>
+  </div>
+</section>
+
+<!-- ============ 15 · VS CLAUDE CODE ============ -->
+<section id="vs-cc">
+  <h2><span class="n">15</span>对照 Claude Code</h2>
+  <p class="sub">两者共享同一个智能体内核思想，但定位不同：Claude Code 是「开发者的终端编码助理」，
+  IronClaw 是「把这套内核长成 7×24 个人助理服务」。下表逐维度对照。</p>
+  <table>
+    <tr><th>维度</th><th>Claude Code</th><th>IronClaw</th></tr>
+    <tr><td><b>形态</b></td><td>CLI / IDE 扩展，开发者交互式驱动</td><td>常驻服务，多渠道接入（Telegram/Slack/Web/Webhook）</td></tr>
+    <tr><td><b>智能体循环</b></td><td>ReAct 式：推理 → 工具 → 观察 → 重复</td><td>同构 <code>run_agentic_loop()</code>；v2 升级为 Step 循环 + CodeAct</td></tr>
+    <tr><td><b>触发模式</b></td><td>纯被动——用户发起才执行</td><td>被动 + <strong>主动</strong>：Heartbeat 心跳、Routines 定时/事件</td></tr>
+    <tr><td><b>记忆</b></td><td>会话级 + <code>CLAUDE.md</code>；跨会话靠摘要</td><td>持久 Workspace，FTS+向量混合检索，身份文件，永不删除</td></tr>
+    <tr><td><b>Skills</b></td><td>SKILL.md + frontmatter，人工撰写/安装</td><td>同构 SKILL.md + 信任模型 + 评分管线；v2 技能可带可执行代码、可自动抽取</td></tr>
+    <tr><td><b>工具集</b></td><td>固定内置 + MCP</td><td>内置 + MCP + <strong>WASM 沙箱工具，且能现场编译生成新工具</strong></td></tr>
+    <tr><td><b>不可信代码隔离</b></td><td>权限提示（用户逐次批准）</td><td>WASM 能力沙箱 + Docker 沙箱，多道安全管线</td></tr>
+    <tr><td><b>凭证</b></td><td>本地配置 / 环境变量</td><td>AES-256-GCM + OS 钥匙串；零暴露注入；泄漏检测</td></tr>
+    <tr><td><b>子智能体 / agent-as-tools</b></td><td>Task 工具派生子代理（编排留给 prompt）</td><td>Thread 树 + <code>llm_query()</code> + <code>create_job()</code>；编排同样留给 Python 编排器</td></tr>
+    <tr><td><b>Hooks</b></td><td>生命周期 hook（settings.json）</td><td>6 个生命周期 hook 点（src/hooks/）</td></tr>
+    <tr><td><b>自我进化</b></td><td><strong>无</strong>——CLAUDE.md / Skills / Hooks 全人工策划，刻意不自演化（换取可预测性、无漂移）</td><td><strong>有</strong>（Engine v2）——4 类学习任务从轨迹自学，自动抽技能、L1/L2 自动改提示与编排器代码。代码完整、测试充分，但 opt-in 且<em class="em">有效性待经验验证</em></td></tr>
+    <tr><td><b>有趣的交集</b></td><td>—</td><td><code>claude_bridge.rs</code> 在 Docker 容器内<strong>字面意义地 spawn <code>claude</code> CLI</strong> 当作一种 Worker 后端</td></tr>
+  </table>
+  <div class="callout">
+    <span class="ct">一句话总结</span>
+    <p>IronClaw ≈ <strong>「Claude Code 的智能体内核」 + 「多渠道服务化外壳」 + 「WASM/Docker 双沙箱安全地基」 + 「持久记忆与自我进化闭环」</strong>，
+    用 Rust 重写以获得原生性能、内存安全与单二进制部署。源出 OpenClaw（TypeScript），见 <code>FEATURE_PARITY.md</code>。
+    它在<em class="em">安全与持久化</em>上比 Claude Code 走得更远更扎实；在<em class="em">自我进化</em>上比 Claude Code 更激进——
+    但「更激进」是一个尚未被 metrics 证实的赌注，而非已兑现的优势。</p>
+  </div>
+</section>
+
+<div class="foot">
+  本文档基于真实代码梳理（2026-05 · v0.28.2 · main 分支），由 3 组并行探索/审计子代理读取
+  <code>src/</code> 与 <code>crates/</code> 后综合生成。完善度百分比 = 代码实现与测试完成度的工程估计，<strong>非</strong>大规模生产验证度。
+  架构正处迁移期，具体行为以代码与各模块 <code>CLAUDE.md</code> 规格为准。<br>
+  权威规格入口：<code>CLAUDE.md</code> · <code>src/agent/CLAUDE.md</code> · <code>crates/ironclaw_engine/CLAUDE.md</code> ·
+  <code>.claude/rules/skills.md</code> · <code>docs/internal/engine-v2-architecture.md</code>
+</div>
+
+</main>
+</div>
+<script>
+  const secs=[...document.querySelectorAll('section')];
+  const items=[...document.querySelectorAll('nav a.item')];
+  const map={};items.forEach(a=>map[a.getAttribute('href').slice(1)]=a);
+  const io=new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(e.isIntersecting){
+        items.forEach(i=>i.classList.remove('on'));
+        const a=map[e.target.id]; if(a)a.classList.add('on');
+      }
+    });
+  },{rootMargin:'-45% 0px -50% 0px'});
+  secs.forEach(s=>io.observe(s));
+</script>
+</body>
+</html>
